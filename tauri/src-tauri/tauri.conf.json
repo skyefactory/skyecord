@@ -13,7 +13,7 @@
         "title": "skyecord",
         "width": 800,
         "height": 600,
-        "resizable": true,
+        "resizable": false,
         "fullscreen": false
       }
     ],
@@ -34,5 +34,5 @@
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }
-  }
+  },
 }

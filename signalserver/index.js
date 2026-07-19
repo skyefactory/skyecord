@@ -1,5 +1,36 @@
 import {WebSocketServer} from 'ws';
 import validator from 'validator';
+import dotenv from 'dotenv';
+dotenv.config();
+async function initRooms(signalingServer) {
+    const response = await fetch('https://auth.skyefactory.com/room', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ operation:'get', secret: process.env.ROOM_LIST_SECRET })
+    });
+
+    if (!response.ok) {
+        console.error(`Failed to fetch room list. Status: ${response.status}`);
+        return;
+    }
+
+    const data = await response.json();
+    if (!data.rooms || !Array.isArray(data.rooms)) {
+        console.error('Invalid room list format received from auth server.');
+        return;
+    }
+
+    for (const room of data.rooms) {
+        if (room.roomId && room.roomName) {
+            signalingServer.rooms.set(room.roomId, new Room(room.roomId, room.roomName));
+            console.log(`Initialized room: ${room.roomName} with ID: ${room.roomId}`);
+        } else {
+            console.error('Invalid room data received:', room);
+        }
+    }
+}
 
 class Room{
     constructor(roomId, roomName){
@@ -63,6 +94,51 @@ class SignalingServer{
             });
 
             ws.on('message', async (message) => { // We received a message from a client.
+                //check if this message is from the auth server to update the room list. If so, update the room list and return.
+                try{
+                    const data = this.parseMessage(message);
+                    if(data && data.type === 'updateRoomList'){
+                        console.log('Received room list update from auth server.');
+                        const { roomId, roomName, secret, operation } = data;
+                        if(!roomId || !roomName){
+                            console.error('Invalid room list update received from auth server. Missing roomId or roomName.');
+                            ws.close(1003, 'Invalid room list update');
+                            return;
+                        }
+                        if(secret !== process.env.ROOM_LIST_SECRET){
+                            console.error('Invalid secret provided for room list update.');
+                            ws.close(1003, 'Invalid secret for room list update');
+                            return;
+                        }
+
+                        if(operation === 'delete'){
+                            if(signalingServer.rooms.has(roomId)){
+                                // remove all users from the room before deleting it
+                                const room = signalingServer.rooms.get(roomId);
+                                for (const userWs of room.users) {
+                                    userWs.send(JSON.stringify({ type: 'error', message: 'Room has been deleted by the server.' }));
+                                    userWs.close(1003, 'Room deleted');
+                                }
+                                signalingServer.rooms.delete(roomId);
+                                console.log(`Deleted room: ${roomName} with ID: ${roomId}`);
+                            } else {
+                                console.log(`Room with ID: ${roomId} does not exist. Skipping deletion.`);
+                            }
+                        } else if(!signalingServer.rooms.has(roomId)){
+                            signalingServer.rooms.set(roomId, new Room(roomId, roomName));
+                            console.log(`Added new room: ${roomName} with ID: ${roomId}`);
+                        } else {
+                            console.log(`Room with ID: ${roomId} already exists. Skipping addition.`);
+                            ws.close(1003, 'Room already exists');
+                        }
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error processing message from auth server:', error);
+                }
+
+                // If the message is not from the auth server, process it as a client message.
+
                 // Parse the message and check if it is valid JSON. If not, close the connection.
                 let data = signalingServer.parseMessage(message);
                 if (!data){
@@ -382,217 +458,8 @@ class SignalingServer{
 };
 
 const signalingServer = new SignalingServer(50420, 64 * 1024, 10); // Create a new signaling server instance
-signalingServer.rooms.set("ukBrqYZrVm0T", new Room("ukBrqYZrVm0T", "dev room")); // Create a default room for testing
-/*
-
-const room_id = "ukBrqYZrVm0T" // single room for now.
-const room_name = "dev room" // Name of the room, placeholder.
-const users_in_room = Object.create(null);; // each user needs to connect to n - 1 other users, where n is the number of users in the room. Mesh network.
-const wss = new WebSocketServer({
-    port:50420,
-    maxPayload:64*1024,
+initRooms(signalingServer).then(() => {
+    console.log('Room initialization complete.');
+}).catch((error) => {
+    console.error('Error during room initialization:', error);
 });
-const MAX_USERS = 5;
-let connections = 0;
-const maxConnections = 5; // Maximum number of concurrent connections allowed
-console.log('skyecord signalling server started on port 50420');
-
-function parseMessage(message) {
-    try{
-        return JSON.parse(message);
-    } catch (error) {
-        console.error('Error parsing message:', error);
-        return null;
-    }
-}
-
-function joinRoom(ws, name, roomId) {
-    if (Object.keys(users_in_room).length >= MAX_USERS) {
-        ws.send(JSON.stringify({
-            type:"error",
-            message:"Room full"
-        }));
-        ws.close(1008, "Room full");
-        return;
-    }
-    if (
-        typeof name !== "string" ||
-        name.length < 1 ||
-        name.length > 32
-    ){
-        ws.send(JSON.stringify({ type: 'error', message: 'Invalid username' }));
-        console.log(`User ${name} attempted to join with invalid username`);
-        ws.close(1003, 'Invalid username');
-        return;
-    }
-    if (ws.name) {
-        ws.close(1008, "Already joined");
-        return;
-    }
-    if (String(roomId) !== String(room_id)) { // check if the room ID is valid. If not, send an error message and close the connection.
-        ws.send(JSON.stringify({ type: 'error', message: 'Invalid room ID' }));
-        console.log(`User ${name} attempted to join with invalid room ID: ${roomId}`);
-        ws.close(1003, 'Invalid room ID');
-        return;
-    }
-    if (users_in_room[name]) { // check if the username is already taken. If so, send an error message and close the connection.
-        ws.send(JSON.stringify({ type: 'error', message: 'Username already taken' }));
-        console.log(`User ${name} attempted to join but username is already taken`);
-        ws.close(1003, 'Username already taken');
-        return;
-    }
-
-    ws.name = name; // store the username in the WebSocket object to allow for managing user state and broadcasting messages
-    users_in_room[name] = ws; // add the user to the room
-    console.log(`User ${name} joined the room`); 
-    // send a message to the client confirming they have joined the room
-    ws.send(JSON.stringify({ type: 'joined', roomId: room_id, roomName: room_name, users: Object.keys(users_in_room), numusers: Object.keys(users_in_room).length }));
-    // inform all other users that a new user has joined the room. This causes them to update their user lists and initiate peer connections with the new user.
-    broadcastToRoom({ type: 'user_change', users: Object.keys(users_in_room), numusers: Object.keys(users_in_room).length }, ws);
-}
-
-function processOffer(ws, data) {
-    if (!ws.name) {
-        ws.close(1008, "Must join first");
-        return;
-    }
-    if (
-        typeof data.target !== "string" ||
-        typeof data.description !== "object"
-    ){
-        ws.close(1003, "Invalid offer format");
-        return;
-    }
-    if (
-        data.description.type !== "offer" &&
-        data.description.type !== "answer"
-    ) {
-        ws.close(1003, "Invalid SDP type");
-        return;
-    }
-    const target = users_in_room[data.target];
-    if (target) {
-        console.log(`Forwarding ${data.description.type} from ${ws.name} to ${data.target}`);
-        target.send(JSON.stringify({ type: 'offer', description: data.description, from: ws.name }));
-    } else {
-        console.log(`Offer target ${data.target} not found`);
-    }
-}
-
-function processIceCandidate(ws, data) {
-    if (!ws.name) {
-        ws.close(1008, "Must join first");
-        return;
-    }
-    if (
-        typeof data.target !== "string" ||
-        typeof data.candidate !== "object"
-    ){
-        ws.close(1003, "Invalid ICE candidate format");
-        return;
-    }
-    const target = users_in_room[data.target];
-    if (target) {
-        console.log(`Forwarding ICE candidate from ${ws.name} to ${data.target}`);
-        target.send(JSON.stringify({ type: 'ice-candidate', candidate: data.candidate, from: ws.name }));
-    } else {
-        console.log(`ICE candidate target ${data.target} not found`);
-    }
-}
-
-function processDisconnect(ws, code, reason) {
-    if (ws.name) {
-        delete users_in_room[ws.name];
-        console.log(`User ${ws.name} left the room`);
-        broadcastToRoom({ type: 'user_change', users: Object.keys(users_in_room), numusers: Object.keys(users_in_room).length });    
-    } 
-    else if(code !== 1003) { // 1003 is the code for invalid message format or username taken
-            console.log('A user disconnected before joining the room.');
-    }
-    console.log(`Client disconnected. Code: ${code}, Reason: ${reason}`);
-}
-
-function broadcastToRoom(message, excludeWs = null) {
-    for (const user in users_in_room) {
-        if (users_in_room[user] !== excludeWs) {
-            users_in_room[user].send(JSON.stringify(message));
-        }
-    }
-}
-
-const heartbeatInterval = setInterval(() => {
-    wss.clients.forEach((ws) => {
-        if (ws.isAlive === false) {
-            console.log(`Terminating inactive client: ${ws.name || 'Unknown'}`);
-            return ws.terminate(); // Forcefully close the connection
-        }
-
-        ws.isAlive = false;
-        ws.ping(); 
-    });
-}, 30000);
-
-const logInterval = setInterval(() => {
-    console.log('Current users in room:', Object.keys(users_in_room));
-}, 60000);
-
-
-// Clear the intervals if the websocket server shuts down to prevent memory leaks
-wss.on('close', () => {
-    connections--;
-    clearInterval(heartbeatInterval);
-    clearInterval(logInterval);
-    console.log("Shutting down server and clearing intervals.");
-});
-
-wss.on('connection', (ws) => { // new connection recieved
-    console.log('Client connected');
-    connections++;
-    if (connections > maxConnections) {
-        console.log('Maximum connections reached. Closing new connection.');
-        ws.send(JSON.stringify({ type: 'error', message: 'Server is full. Try again later.' }));
-        ws.close(1013, 'Server is full');
-        return;
-    }
-    
-    // Each client connection needs to be marked as alive to ensure that the connection is still active. This is done using a heartbeat mechanism.
-    ws.isAlive = true;
-
-    ws.on('pong', () => { // When a pong is received, mark the connection as alive
-        ws.isAlive = true;
-    });
-
-    ws.on('message', (message) => { // We recieved a message from a client.
-        let data = parseMessage(message);
-        if (!data){
-            console.log('Received invalid JSON message from client. Closing connection.');
-            ws.close(1003, 'Invalid JSON message');
-            return;
-        }
-
-        switch (data.type) {
-            case 'join':
-                joinRoom(ws, data.name, data.roomId);
-                break;
-            case 'offer':
-                processOffer(ws, data);
-                break;
-            case 'ice-candidate':
-                processIceCandidate(ws, data);
-                break;
-            default:
-                console.log('Received message from client with unknown type: ' + data.type);
-                ws.close(1003, 'Unknown message type');
-                return;
-        }
-
-    });
-
-    ws.on('close', (code, reason) => {
-        processDisconnect(ws, code, reason);
-    });
-});
-
-
-
-*/

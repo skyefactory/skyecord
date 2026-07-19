@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@font-face {
+    font-family: 'amstradpc';
+    src: url('amstradpc.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@theme {
+  /* Register your retro Amstrad font */
+  --font-amstrad: 'amstradpc', monospace;
+  
+  /* Register your exact color themes */
+  --color-skye-bg: #131a17;
+  --color-skye-cyan: #9dd6d6;
+  --color-skye-gray-dark: #313131;
+  --color-skye-gray-darker: #212121;
+  --color-skye-gray-hover: #3f3f3f;
+  --color-skye-gray-input: #494949;
+  --color-skye-gray-border: #6b6b6b;
+  --color-skye-gray-light: #8f8f8f;
+  --color-skye-gray:#2c2e2c;
+  /* Register your rainbow moving animation */
+  --animate-rainbow-move: rainbow-move 4s linear infinite;
+
+  @keyframes rainbow-move {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+  }
+}
+
+/* Base Body Application */
+body {
+    @apply font-amstrad bg-skye-bg text-white;
+}
+
+/* Multi-color complex gradient animation block */
+.rainbow-text-animated {
+    background: linear-gradient(to right, #ef3550, #f48a1d, #f1dd00, #36b041, #0093e0, #5c2c90, #ef3550);
+    background-size: 300% 100%;
+    @apply drop-shadow-[2px_2px_4px_rgba(0,0,0,0.5)] text-[48px] font-bold bg-clip-text text-transparent animate-rainbow-move;
+}

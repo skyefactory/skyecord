@@ -1,0 +1,14 @@
+{
+  "name": "skyecord",
+  "icons": [
+    {
+      "src": "512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+ "start_url": "/",
+ "display": "standalone",
+ "display_override": "window-controls-overlay",
+ "prefer_related_applications": false
+}

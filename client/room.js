@@ -428,6 +428,9 @@ socket.addEventListener('message', async (event) => {
                 }
             }
             break;
+        case 'error':
+            console.error('Error from server:', data.message);
+            break;
         default:
             console.log('Recieved message from server with unknown type: ' + data.type);
     }

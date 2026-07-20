@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         # Use separate virtual environments to natively build for each platform
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest]
 
     steps:
       - name: Checkout Source Code

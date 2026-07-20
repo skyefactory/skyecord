@@ -1,0 +1,12 @@
+.env
+authserver/
+authserver/*
+webrtcnotes.md
+target/
+target/*
+signalserver/*
+signalserver/
+node_modules/
+node_modules/*
+out/
+out/*

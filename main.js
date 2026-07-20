@@ -12,7 +12,7 @@ const createWindow = () => {
     // Note: Creating a BrowserWindow automatically initializes the defaultSession.
     const win = new BrowserWindow({
         width: 800,
-        height: 600,
+        height: 650,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true

@@ -124,7 +124,7 @@ function createDeleteRoomControls(ownRoom, sessionId) {
 
     const warning = document.createElement('p');
     warning.className = 'text-[14px] mb-2.5';
-    warning.textContent = 'Are you sure you want to delete this room? This action cannot be undone.';
+    warning.textContent = 'Are you sure you want to delete this room?';
 
     const warning2 = document.createElement('p');
     warning2.className = 'text-[14px] mb-2.5';

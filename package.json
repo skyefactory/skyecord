@@ -1,6 +1,6 @@
 {
   "name": "skyecord",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "skyecord app (LGBT+ ONLY)",
   "main": "main.js",
   "scripts": {
@@ -27,7 +27,9 @@
     "electron": "^43.1.1"
   },
   "dependencies": {
+    "@tailwindcss/cli": "^4.3.3",
     "electron-squirrel-startup": "^1.0.1",
+    "tailwindcss": "^4.3.3",
     "update-electron-app": "^3.3.0"
   },
   "repository": {

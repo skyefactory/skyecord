@@ -59,25 +59,16 @@ function setErrorMessage(message) {
     }
 }
 
-function getCookie(cname) {
-    const name = cname + '=';
-    const decodedCookie = decodeURIComponent(document.cookie);
-    const ca = decodedCookie.split(';');
+function getStoredValue(key) {
+    return localStorage.getItem(key) ?? '';
+}
 
-    for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') {
-            c = c.substring(1);
-        }
-        if (c.indexOf(name) === 0) {
-            return c.substring(name.length, c.length);
-        }
-    }
-    return '';
+function setStoredValue(key, value) {
+    localStorage.setItem(key, value);
 }
 
 async function isAuthenticated() {
-    const sessionId = getCookie('session_id');
+    const sessionId = getStoredValue('session_id');
     if (!sessionId) {
         console.log('No session ID found in cookies.');
         return false;
@@ -213,7 +204,7 @@ async function loadFavorites() {
         return;
     }
 
-    const sessionId = getCookie('session_id');
+    const sessionId = getStoredValue('session_id');
     if (!sessionId) {
         setErrorMessage('No session ID found. Please log in again.');
         return;
@@ -274,7 +265,7 @@ async function loadFavorites() {
 }
 
 function joinRoom(roomId) {
-    const nickname = getCookie('nickname');
+    const nickname = getStoredValue('nickname');
     if (!nickname) {
         joinForm.style.display = 'block';
         document.getElementById('room-id').value = roomId;
@@ -283,7 +274,7 @@ function joinRoom(roomId) {
         return;
     }
 
-    window.location.href = `room.html?name=${encodeURIComponent(nickname)}&roomId=${encodeURIComponent(roomId)}`;
+    window.location.href = `./room.html?name=${encodeURIComponent(nickname)}&roomId=${encodeURIComponent(roomId)}`;
 }
 
 async function createRoom(roomName) {
@@ -292,7 +283,7 @@ async function createRoom(roomName) {
         return;
     }
 
-    const sessionId = getCookie('session_id');
+    const sessionId = getStoredValue('session_id');
     if (!sessionId) {
         setErrorMessage('No session ID found. Please log in again.');
         return;
@@ -382,7 +373,7 @@ logonForm.addEventListener('submit', async (event) => {
         });
         const data = await response.json();
         if (data.success) {
-            document.cookie = `session_id=${data.sessionId}; path=/;`;
+            setStoredValue('session_id', data.sessionId);
             logonForm.style.display = 'none';
             newRoomForm.style.display = 'none';
             setNewJoinVisibility(true);
@@ -436,8 +427,8 @@ joinForm.addEventListener('submit', async (event) => {
         return;
     }
 
-    document.cookie = `nickname=${encodeURIComponent(displayName)}; path=/;`;
-    window.location.href = `room.html?name=${encodeURIComponent(displayName)}&roomId=${encodeURIComponent(roomId)}`;
+    setStoredValue('nickname', displayName);
+    window.location.href = `./room.html?name=${encodeURIComponent(displayName)}&roomId=${encodeURIComponent(roomId)}`;
 });
 
 window.addEventListener('DOMContentLoaded', async () => {

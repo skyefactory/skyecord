@@ -407,7 +407,7 @@ socket.addEventListener('message', async (event) => {
                     } catch (err) {
                         console.error('Error setting local description for answer', err);
                     }
-                    socket.send(JSON.stringify({ type: 'offer', description: peer.pc.localDescription, target: data.from, roomId: roomId, sessionId: sessionId }));
+                    socket.send(JSON.stringify({ type: peer.pc.localDescription.type, description: peer.pc.localDescription, target: data.from, roomId: roomId, sessionId: sessionId }));
                 }
                 break;
             }

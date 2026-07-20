@@ -11,7 +11,7 @@
     "publish": "electron-forge publish"
   },
   "author": {
-    "name": "Skye \"Computer Fucker\" Factory"
+    "name": "Skye Factory"
   },
   "license": "ISC",
   "devDependencies": {

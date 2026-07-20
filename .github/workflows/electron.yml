@@ -2,8 +2,8 @@ name: Build and Release Electron App
 
 on:
   push:
-      branches:
-        master
+    tags:
+      - '*'
 
 jobs:
   build_and_release:
@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm' # Speeds up execution by caching node_modules
 
       - name: Install Project Dependencies

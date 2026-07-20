@@ -4,15 +4,29 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
+    icon: `./favicon`,
+    win32metadata: {
+      CompanyName: 'Skyefactory',
+      FileDescription: 'P2P Mesh communication doohickey',
+      ProductName: 'Skyecord',
+      InternalName: 'Skyecord',
+    },
     extraResource:[
       "./client"
-    ]
+    ],
+
+
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        name: 'skyecord',
+        iconUrl: 'https://skyecord.skyefactory.com/favicon.ico',
+        setupIcon: './favicon.ico',
+        loadingGif: './loading-gif.gif',
+      },
     },
     {
       name: '@electron-forge/maker-zip',

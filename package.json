@@ -10,7 +10,19 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish"
   },
-  "author": "Skye \"Computer Fucker\" Factory",
+  "author": {
+    "name": "Skye \"Computer Fucker\" Factory"
+  },
+  "config": {
+    "forge": {
+      "packagerConfig": {
+        "win32metadata": {
+          "CompanyName": "Skye \"Computer Fucker\" Factory",
+          "LegalCopyright": "Copyright © 2026 Skye \"Computer Fucker\" Factory"
+        }
+      }
+    }
+  },
   "license": "ISC",
   "devDependencies": {
     "@electron-forge/cli": "^7.11.2",

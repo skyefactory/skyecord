@@ -1,8 +1,11 @@
-const { app, BrowserWindow, session } = require('electron/main');
+if(require('electron-squirrel-startup')) return;
+
+const { app, BrowserWindow, session, Menu } = require('electron/main'); 
 const { updateElectronApp } = require('update-electron-app');
 const path = require('path');
-if(require('electron-squirrel-startup')) return;
+
 updateElectronApp();
+
 app.on('web-contents-created', (event, contents) => {
     contents.session.setPermissionRequestHandler(
         (webContents, permission, callback) => {
@@ -19,7 +22,9 @@ app.on('web-contents-created', (event, contents) => {
 });
 
 const createWindow = () => {
+    // This will now execute perfectly without throwing an error
     Menu.setApplicationMenu(null); 
+    
     const win = new BrowserWindow({
         width: 800,
         height: 600,

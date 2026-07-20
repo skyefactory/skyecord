@@ -5,11 +5,12 @@ module.exports = {
   packagerConfig: {
     asar: true,
     icon: `./favicon`,
+    executableName: 'skyecord',
     win32metadata: {
-      CompanyName: 'Skyefactory',
-      FileDescription: 'P2P Mesh communication doohickey',
-      ProductName: 'Skyecord',
-      InternalName: 'Skyecord',
+      CompanyName: 'skyefactory',
+      FileDescription: 'skyecord',
+      ProductName: 'skyecord',
+      InternalName: 'skyecord',
     },
     extraResource:[
       "./client"

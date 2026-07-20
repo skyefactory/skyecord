@@ -23,7 +23,7 @@ app.on('web-contents-created', (event, contents) => {
 
 const createWindow = () => {
     // This will now execute perfectly without throwing an error
-    Menu.setApplicationMenu(null); 
+    //Menu.setApplicationMenu(null); 
     
     const win = new BrowserWindow({
         width: 800,

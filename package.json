@@ -11,7 +11,7 @@
     "publish": "electron-forge publish"
   },
   "author": {
-    "name": "Skye Factory"
+    "name": "Skye 'computer fucker' Factory"
   },
   "license": "ISC",
   "devDependencies": {
@@ -27,6 +27,11 @@
     "electron": "^43.1.1"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "electron-squirrel-startup": "^1.0.1",
+    "update-electron-app": "^3.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/skyefactory/skyecord.git"
   }
 }

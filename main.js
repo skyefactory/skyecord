@@ -1,4 +1,6 @@
 const { app, BrowserWindow, session } = require('electron/main');
+const { updateElectronApp } = require('update-electron-app');
+updateElectronApp();
 const path = require('path');
 
 app.on('web-contents-created', (event, contents) => {

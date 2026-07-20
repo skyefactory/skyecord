@@ -33,6 +33,16 @@ const createWindow = () => {
             contextIsolation: true
         }
     });
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        // Array of all permissions your multimedia app requires
+        const allowedPermissions = ['audioCapture', 'videoCapture', 'display-capture'];
+        
+        if (allowedPermissions.includes(permission)) {
+        return callback(true); // Automatically grant permission
+        }
+        
+        callback(false); // Reject everything else
+    });
 
     win.loadFile(
         path.join(__dirname, "client", "index.html")

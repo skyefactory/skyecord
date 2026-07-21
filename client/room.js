@@ -125,7 +125,7 @@ function updateUserCountandList(users, numusers) {
         const listItem = document.createElement('li');
         if (user === displayName) {
             listItem.textContent = user + ' (You)';
-            listItem.className = 'p-1 bg-[rgb(60,60,30)] text-white font-bold ';
+            listItem.className = 'p-1 bg-[rgb(60, 60, 30)] text-white font-bold ';
 
             const selfControls = document.getElementById('self-controls');
             const controlsInstance = selfControls.cloneNode(true);
@@ -165,6 +165,24 @@ function getStoredValue(key) {
 function setStoredValue(key, value) {
     localStorage.setItem(key, value);
 }
+
+function isAudioOverThreshold(threshold, analyser){
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(dataArray);
+
+    const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+    const normalizedValue = average / 255;
+    return normalizedValue > threshold;
+}
+
+function isAudioSilent(threshold, analyser, onNoise, onSilence){
+    if(isAudioOverThreshold(threshold, analyser)){
+        onNoise();
+    } else {
+        onSilence();
+    }
+}
+
 
 bindDialogControls(document.getElementById('self-controls'), '.self-controls-open', 'dialog', '.self-controls-close');
 bindDialogControls(document.getElementById('other-controls'), '.other-controls-open', 'dialog', '.other-controls-close');
@@ -266,6 +284,8 @@ class Peer {
             } else {
                 track.onunmute = tryPlay;
             }
+
+            this.startVoiceDetection(stream);
         }
 
         if (trackType === 'video') {
@@ -286,6 +306,7 @@ class Peer {
                 audioElement.srcObject = null;
                 audioElement.remove();
             }
+            this.stopVoiceDetection();
             this.pc.close();
             delete peerConnections[this.peerName];
         }
@@ -312,6 +333,45 @@ class Peer {
     //Helpers
     queueIceCandidate(candidate) {}
     flushIceCandidateQueue(){}
+
+    stopVoiceDetection(){
+        if (this.voiceAnimationFrame) {
+            cancelAnimationFrame(this.voiceAnimationFrame);
+            this.voiceAnimationFrame = null;
+        }
+        if (this.audioContext) {
+            this.audioContext.close();
+            this.audioContext = null;
+        }
+    }
+
+    startVoiceDetection(stream){
+        this.audioContext = new AudioContext();
+
+        const source = this.audioContext.createMediaStreamSource(stream);
+        this.analyser = this.audioContext.createAnalyser();
+        this.analyser.fftSize = 512;
+        source.connect(this.analyser);
+
+        const check = () =>{
+            isAudioSilent(0.02, this.analyser, ()=> this.onSpeaking(), ()=> this.onSilent());
+            this.voiceAnimationFrame = requestAnimationFrame(check);
+        };
+
+        check();
+    }
+
+    onSpeaking(){
+        if(this.isSpeaking) return;
+        this.isSpeaking = true;
+        console.log(this.peerName + ' is speaking');
+    }
+
+    onSilent(){
+        if(!this.isSpeaking) return;
+        this.isSpeaking = false;
+        console.log(this.peerName + ' is silent');
+    }
 
     //Socket calls
     async receiveDescription(description, from){

@@ -13,3 +13,4 @@ out/*
 *.key
 *.sh
 release.sh
+*.gpg

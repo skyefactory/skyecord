@@ -55,14 +55,19 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: morph027/apt-repo-action@v3
         id: create-apt-repo
+        env:
+          # Forces GPG to accept passphrases inside non-interactive CI environments
+          GPG_TTY: /dev/null
         with:
           repo-name: skyecord
           signing-key: ${{ secrets.APT_PRIVATE_KEY }}
-          passphrase: ${{ secrets.APT_PASSPHRASE }}
+          # --- FIXED PARAMETER NAMES ---
+          signing-key-passphrase: ${{ secrets.APT_PASSPHRASE }}
+          scan-dir: out/make
+          # ------------------------------
           codename: stable
           components: main
           architectures: amd64
-          # Connects to your live repository link to merge new updates safely
           import-from-repo-url: ""
           file: ${{ steps.locate_deb.outputs.path }}
 

@@ -1,14 +1,12 @@
+/******************************************************** 
+ * Constants
+********************************************************/
+//Url parameters
+
 const displayName = new URLSearchParams(window.location.search).get('name');
 const roomId = new URLSearchParams(window.location.search).get('roomId');
-const muteMicButton = document.getElementById('mute-mic');
-const deafenSelfButton = document.getElementById('deafen-self');
-const leaveRoomButton = document.getElementById('leave-room');
-const screenShareButton = document.getElementById('screen-share');
-const videoButton = document.getElementById('video');
-const sessionId = getStoredValue('session_id');
-const signallingServerURL = 'wss://signal.skyefactory.com';
-const socket = new WebSocket(signallingServerURL);
-console.log(sessionId);
+
+//Audio
 const joinedAudio = './audio/joined.wav';
 const leftAudio = './audio/left.wav';
 const startedVideoAudio = './audio/started-video.wav';
@@ -18,16 +16,32 @@ const deafenedAudio = './audio/deafened.wav';
 const unmutedAudio = './audio/unmuted.wav';
 const undeafenedAudio = './audio/undeafened.wav';
 
+//Ui elements
+const muteMicButton = document.getElementById('mute-mic');
+const deafenSelfButton = document.getElementById('deafen-self');
+const leaveRoomButton = document.getElementById('leave-room');
+const screenShareButton = document.getElementById('screen-share');
+const videoButton = document.getElementById('video');
+
+//Auth
+const sessionId = getStoredValue('session_id');
+
+
+//WEBRTC
+
+const signallingServerURL = 'wss://signal.skyefactory.com';
+const socket = new WebSocket(signallingServerURL);
 const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' }
     ]
 };
-
 const constraints = {
     audio: true,
     video: false
 };
+
+//State
 
 let localStream = null;
 let isMuted = false;
@@ -35,6 +49,12 @@ let isDeafened = false;
 let isScreenSharing = false;
 let numPeers = 0;
 const peerConnections = {};
+
+/******************************************************** 
+ * Functions
+********************************************************/
+
+// UI Functions
 
 function bindDialogControls(root, openSelector, dialogSelector, closeSelector) {
     if (!root) {
@@ -58,9 +78,6 @@ function bindDialogControls(root, openSelector, dialogSelector, closeSelector) {
     });
 }
 
-bindDialogControls(document.getElementById('self-controls'), '.self-controls-open', 'dialog', '.self-controls-close');
-bindDialogControls(document.getElementById('other-controls'), '.other-controls-open', 'dialog', '.other-controls-close');
-
 async function playSystemSound(soundPath) {
     const audioElement = document.getElementById('application');
     if (!audioElement || !soundPath) {
@@ -79,155 +96,6 @@ async function playSystemSound(soundPath) {
     }
 }
 
-class Peer {
-    constructor(peerName) {
-        this.peerName = peerName;
-        this.iceCandidateQueue = [];
-        this.pc = new RTCPeerConnection(configuration);
-        this.polite = displayName < peerName;
-        this.makingOffer = false;
-        this.ignoreOffer = false;
-        this.isSettingRemoteAnswerPending = false;
-        this.textChannel = this.pc.createDataChannel('text');
-        this.controlChannel = this.pc.createDataChannel('control');
-        this.otherVolume = 1.0;
-        this.remoteStatus = { muted: false, deafened: false };
-
-        this.controlChannel.onopen = () => {
-            console.log('Control channel with ' + peerName + ' is open.');
-            this.controlChannel.send(JSON.stringify({ type: 'status', muted: isMuted, deafened: isDeafened }));
-        };
-
-        this.controlChannel.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'status') {
-                    console.log('Received status from ' + peerName, data);
-                    this.remoteStatus = { muted: data.muted, deafened: data.deafened };
-                }
-            } catch (err) {
-                console.error('Error parsing control channel message from ' + peerName, err);
-            }
-        };
-
-        this.pc.ontrack = (event) => {
-            const { track, streams } = event;
-
-            let stream = (streams && streams.length) ? streams[0] : null;
-            if (!stream) {
-                stream = new MediaStream();
-                stream.addTrack(track);
-            }
-
-            const trackType = track.kind;
-            console.log(`Received ${trackType} track from ${peerName}`);
-
-            if (trackType === 'audio') {
-                const audioId = `audio-${peerName}`;
-                let audioElement = document.getElementById(audioId);
-                if (!audioElement) {
-                    audioElement = document.createElement('audio');
-                    audioElement.id = audioId;
-                    audioElement.controls = false;
-                    audioElement.hidden = true;
-                    audioElement.autoplay = true;
-                    audioElement.playsInline = true;
-                    document.body.appendChild(audioElement);
-                }
-
-                if (audioElement.srcObject !== stream) {
-                    audioElement.srcObject = stream;
-                }
-
-                const tryPlay = async () => {
-                    try {
-                        await audioElement.play();
-                    } catch (err) {
-                        console.warn('Autoplay prevented for', audioId, err);
-                    }
-                };
-
-                if (track.readyState === 'live' && !track.muted) {
-                    tryPlay();
-                } else {
-                    track.onunmute = tryPlay;
-                }
-            }
-
-            if (trackType === 'video') {
-                console.log(`Received video track from ${peerName}, but video is not currently supported.`);
-                playSystemSound(startedVideoAudio);
-            }
-        };
-
-        this.pc.addEventListener('connectionstatechange', () => {
-            if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed' || this.pc.connectionState === 'closed') {
-                const audioElement = document.getElementById(`audio-${peerName}`);
-                if (audioElement) {
-                    audioElement.srcObject = null;
-                    audioElement.remove();
-                }
-                delete peerConnections[peerName];
-            }
-        });
-
-        this.pc.onnegotiationneeded = async () => {
-            try {
-                this.makingOffer = true;
-                if (this.pc.signalingState !== 'stable') {
-                    console.log('Signaling state is not stable, skipping negotiation.');
-                    return;
-                }
-                if (this.pc.isSettingRemoteAnswerPending) {
-                    console.log('Currently setting remote answer, skipping negotiation.');
-                    return;
-                }
-                try {
-                    await this.pc.setLocalDescription();
-                } catch (err) {
-                    console.error('Error setting local description during negotiation.', err);
-                    return;
-                }
-                socket.send(JSON.stringify({ type: 'offer', description: this.pc.localDescription, target: peerName, roomId: roomId, sessionId: sessionId }));
-            } catch (err) {
-                console.error('Error during negotiation.', err);
-            } finally {
-                this.makingOffer = false;
-            }
-        };
-
-        this.pc.onicecandidate = ({ candidate }) => {
-            if (candidate) {
-                socket.send(JSON.stringify({ type: 'ice-candidate', candidate: candidate, target: peerName, roomId: roomId, sessionId: sessionId }));
-            }
-        };
-    }
-
-    async start() {
-        try {
-            if (localStream === null) {
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
-            }
-            for (const track of localStream.getTracks()) {
-                this.pc.addTrack(track, localStream);
-            }
-            console.log(localStream.getAudioTracks()[0].getSettings());
-        } catch (err) {
-            console.error('Error accessing media devices.', err);
-        }
-    }
-}
-
-function updatePeers(users) {
-    users.forEach(user => {
-        if (user !== displayName && !peerConnections[user]) {
-            const peer = new Peer(user);
-            peerConnections[user] = peer;
-            peer.start();
-        }
-    });
-}
-
 function updateControlAvailability() {
     screenShareButton.disabled = numPeers === 0;
     videoButton.disabled = numPeers === 0;
@@ -236,6 +104,9 @@ function updateControlAvailability() {
 }
 
 function updateUserCountandList(users, numusers) {
+    for(peerName in peerConnections) {
+        console.log('Checking peer connection for', peerName);
+    };
     if (numusers > numPeers + 1) {
         playSystemSound(joinedAudio);
     } else if (numusers < numPeers + 1) {
@@ -271,6 +142,22 @@ function updateUserCountandList(users, numusers) {
     });
 }
 
+
+// Peer management Functions
+
+async function updatePeers(users) {
+    for (const user of users) {
+        if (user !== displayName && !peerConnections[user]) {
+            const peer = new Peer(user);
+            peerConnections[user] = peer;
+            await peer.start();
+        }
+    }
+}
+
+// Utility Functions
+
+
 function getStoredValue(key) {
     return localStorage.getItem(key) ?? '';
 }
@@ -278,6 +165,213 @@ function getStoredValue(key) {
 function setStoredValue(key, value) {
     localStorage.setItem(key, value);
 }
+
+bindDialogControls(document.getElementById('self-controls'), '.self-controls-open', 'dialog', '.self-controls-close');
+bindDialogControls(document.getElementById('other-controls'), '.other-controls-open', 'dialog', '.other-controls-close');
+
+/******************************************************** 
+ * Peer Class
+********************************************************/
+
+class Peer {
+    //Constructor
+    constructor(peerName) {
+        this.peerName = peerName;
+        this.iceCandidateQueue = [];
+        this.pc = new RTCPeerConnection(configuration);
+        this.polite = displayName < peerName;
+        this.makingOffer = false;
+        this.ignoreOffer = false;
+        this.isSettingRemoteAnswerPending = false;
+        this.otherVolume = 1.0;
+        this.remoteStatus = { muted: false, deafened: false };
+        this.setupPeerConnectionEvents();
+    }
+    //Initialization
+    async start() {
+        try {
+            if (localStream === null) {
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            }
+
+            console.log("Adding tracks:", localStream.getTracks());
+
+            for (const track of localStream.getTracks()) {
+                this.pc.addTrack(track, localStream);
+            }
+
+            console.log(
+                "Senders:",
+                this.pc.getSenders().map(s => s.track?.kind)
+            );
+            console.log(localStream.getAudioTracks()[0].getSettings());
+        } catch (err) {
+            console.error('Error accessing media devices.', err);
+        }
+    }
+
+    //Peer Connections
+
+    setupPeerConnectionEvents(){
+        this.pc.ontrack  = (e) => this.onTrack(e);
+        this.pc.onicecandidate = (e) => this.onIceCandidate(e);
+        this.pc.onconnectionstatechange = () => this.onConnectionStateChange();
+        this.pc.onnegotiationneeded = () => this.onNegotiationNeeded();
+    }
+    onTrack(event) {
+        const { track, streams } = event;
+
+        let stream = (streams && streams.length) ? streams[0] : null;
+        if (!stream) {
+            stream = new MediaStream();
+            stream.addTrack(track);
+        }
+
+        const trackType = track.kind;
+        console.log({
+            trackEnabled: track.enabled,
+            trackMuted: track.muted,
+            readyState: track.readyState,
+            streamTracks: stream.getTracks()
+        });
+
+        if (trackType === 'audio') {
+            const audioId = `audio-${this.peerName}`;
+            let audioElement = document.getElementById(audioId);
+            if (!audioElement) {
+                audioElement = document.createElement('audio');
+                audioElement.id = audioId;
+                audioElement.controls = false;
+                audioElement.hidden = false;
+                audioElement.style.display = 'none';
+                audioElement.autoplay = true;
+                audioElement.playsInline = true;
+                document.body.appendChild(audioElement);
+            }
+
+            if (audioElement.srcObject !== stream) {
+                audioElement.srcObject = stream;
+            }
+
+            const tryPlay = async () => {
+                try {
+                    await audioElement.play();
+                } catch (err) {
+                    console.warn('Autoplay prevented for', audioId, err);
+                }
+            };
+
+            if (track.readyState === 'live' && !track.muted) {
+                tryPlay();
+            } else {
+                track.onunmute = tryPlay;
+            }
+        }
+
+        if (trackType === 'video') {
+            console.log(`Received video track from ${this.peerName}, but video is not currently supported.`);
+            playSystemSound(startedVideoAudio);
+        }
+    }
+    onIceCandidate(event) {
+        const candidate = event.candidate;
+        if (candidate) {
+            socket.send(JSON.stringify({ type: 'ice-candidate', candidate: candidate, target: this.peerName, roomId: roomId, sessionId: sessionId }));
+        }
+    }
+    onConnectionStateChange(){
+        if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed' || this.pc.connectionState === 'closed') {
+            const audioElement = document.getElementById(`audio-${this.peerName}`);
+            if (audioElement) {
+                audioElement.srcObject = null;
+                audioElement.remove();
+            }
+            this.pc.close();
+            delete peerConnections[this.peerName];
+        }
+        console.log(
+            this.peerName,
+            "connection:",
+            this.pc.connectionState,
+            "ice:",
+            this.pc.iceConnectionState
+        );
+    }
+    async onNegotiationNeeded(){
+        try {
+            this.makingOffer = true;
+            await this.pc.setLocalDescription();
+            socket.send(JSON.stringify({ type: 'offer', description: this.pc.localDescription, target: this.peerName, roomId: roomId, sessionId: sessionId }));
+        } catch (err) {
+            console.error('Error during negotiation.', err);
+        } finally {
+            this.makingOffer = false;
+        }
+    }
+
+    //Helpers
+    queueIceCandidate(candidate) {}
+    flushIceCandidateQueue(){}
+
+    //Socket calls
+    async receiveDescription(description, from){
+    if (description) {
+            const readyForOffer = !this.makingOffer && (this.pc.signalingState === 'stable' || this.isSettingRemoteAnswerPending);
+            const offerCollision = description.type === 'offer' && !readyForOffer;
+            this.ignoreOffer = !this.polite && offerCollision;
+            if (this.ignoreOffer) {
+                console.log('Ignoring offer from ' + from + ' due to collision and being impolite.');
+                return;
+            }
+            console.log('Replying to offer from ' + from);
+            this.isSettingRemoteAnswerPending = description.type === 'answer';
+            await this.pc.setRemoteDescription(description);
+            this.isSettingRemoteAnswerPending = false;
+            for (const candidate of this.iceCandidateQueue) {
+                try {
+                    await this.pc.addIceCandidate(candidate);
+                } catch(err) {
+                    if(!this.ignoreOffer) {
+                        console.error(err);
+                    }
+                }
+            }
+            this.iceCandidateQueue = [];
+            if (description.type === 'offer') {
+                try {
+                    await this.pc.setLocalDescription();
+                } catch (err) {
+                    console.error('Error setting local description for answer', err);
+                }
+                socket.send(JSON.stringify({ type: 'offer', description: this.pc.localDescription, target: from, roomId: roomId, sessionId: sessionId }));
+            }
+            return;
+        }
+    }
+    async receiveIceCandidate(candidate, from){
+        if (candidate) {
+            if (this.pc.remoteDescription) {
+                try {
+                    await this.pc.addIceCandidate(candidate);
+                } catch (err) {
+                    console.error('Error adding remote ICE candidate', err);
+                }
+            } else {
+                this.iceCandidateQueue.push(candidate);
+            } 
+        }
+    }
+}
+
+
+/******************************************************** 
+ * UI event listeners
+********************************************************/
+
+leaveRoomButton.addEventListener('click', () => {
+    playSystemSound(goodByeAudio);
+    socket.close(1000, 'User left the room');
+});
 
 muteMicButton.addEventListener('click', () => {
     if (localStream) {
@@ -342,6 +436,10 @@ screenShareButton.addEventListener('click', async () => {
     }
 });
 
+/******************************************************** 
+ * Websocket events
+********************************************************/
+
 socket.addEventListener('open', () => {
     console.log('Connected to the signalling server');
     const nameRoomMessage = JSON.stringify({ type: 'join', name: displayName, roomId: roomId, sessionId: sessionId });
@@ -377,71 +475,27 @@ socket.addEventListener('message', async (event) => {
             document.getElementById('room-name').textContent = data.roomName;
             document.getElementById('room-id').textContent = roomId;
             updateUserCountandList(data.users, data.numusers);
-            updatePeers(data.users);
+            await updatePeers(data.users);
             break;
         case 'user_change':
             updateUserCountandList(data.users, data.numusers);
-            updatePeers(data.users);
+            await updatePeers(data.users);
             break;
         case 'offer':
-            if (data.description) {
-                const peer = peerConnections[data.from];
-                if (!peer) {
-                    console.warn('Received offer from unknown peer', data.from);
-                    break;
-                }
-                const readyForOffer = !peer.makingOffer && (peer.pc.signalingState === 'stable' || peer.isSettingRemoteAnswerPending);
-                const offerCollision = data.description.type === 'offer' && !readyForOffer;
-                peer.ignoreOffer = !peer.polite && offerCollision;
-                if (peer.ignoreOffer) {
-                    console.log('Ignoring offer from ' + data.from + ' due to collision and being impolite.');
-                    break;
-                }
-                console.log('Replying to offer from ' + data.from);
-                peer.isSettingRemoteAnswerPending = data.description.type === 'answer';
-                await peer.pc.setRemoteDescription(data.description);
-                peer.isSettingRemoteAnswerPending = false;
-                peer.iceCandidateQueue.forEach(async candidate => {
-                    try {
-                        await peer.pc.addIceCandidate(candidate);
-                    } catch (err) {
-                        console.error('Error adding queued ICE candidate', err);
-                    }
-                });
-                peer.iceCandidateQueue = [];
-                if (data.description.type === 'offer') {
-                    try {
-                        await peer.pc.setLocalDescription();
-                    } catch (err) {
-                        console.error('Error setting local description for answer', err);
-                    }
-                    socket.send(JSON.stringify({ type: 'offer', description: peer.pc.localDescription, target: data.from, roomId: roomId, sessionId: sessionId }));
-                }
+            if(!peerConnections[data.from]) {
                 break;
             }
+            peerConnections[data.from].receiveDescription(data.description, data.from); break;
             break;
+
         case 'ice-candidate':
-            if (data.candidate) {
-                const peer = peerConnections[data.from];
-                if (peer && peer.pc.remoteDescription) {
-                    try {
-                        await peer.pc.addIceCandidate(data.candidate);
-                    } catch (err) {
-                        console.error('Error adding remote ICE candidate', err);
-                    }
-                } else if (peer && !peer.pc.remoteDescription) {
-                    peer.iceCandidateQueue.push(data.candidate);
-                } else {
-                    console.warn('Received ICE candidate for unknown peer', data.from);
-                }
+            if(!peerConnections[data.from]) {
+                break;
             }
+            peerConnections[data.from].receiveIceCandidate(data.candidate, data.from);
             break;
         default:
             console.log('Recieved message from server with unknown type: ' + data.type);
     }
 });
 
-leaveRoomButton.addEventListener('click', () => {
-    playSystemSound(goodByeAudio);
-    socket.close(1000, 'User left the room');
-});

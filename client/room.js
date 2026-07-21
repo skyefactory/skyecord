@@ -5,10 +5,10 @@ const deafenSelfButton = document.getElementById('deafen-self');
 const leaveRoomButton = document.getElementById('leave-room');
 const screenShareButton = document.getElementById('screen-share');
 const videoButton = document.getElementById('video');
-const sessionId = localStorage.getItem('session_id') ?? '';
+const sessionId = getStoredValue('session_id');
 const signallingServerURL = 'wss://signal.skyefactory.com';
 const socket = new WebSocket(signallingServerURL);
-
+console.log(sessionId);
 const joinedAudio = './audio/joined.wav';
 const leftAudio = './audio/left.wav';
 const startedVideoAudio = './audio/started-video.wav';
@@ -271,6 +271,14 @@ function updateUserCountandList(users, numusers) {
     });
 }
 
+function getStoredValue(key) {
+    return localStorage.getItem(key) ?? '';
+}
+
+function setStoredValue(key, value) {
+    localStorage.setItem(key, value);
+}
+
 muteMicButton.addEventListener('click', () => {
     if (localStream) {
         isMuted = !isMuted;
@@ -407,7 +415,7 @@ socket.addEventListener('message', async (event) => {
                     } catch (err) {
                         console.error('Error setting local description for answer', err);
                     }
-                    socket.send(JSON.stringify({ type: peer.pc.localDescription.type, description: peer.pc.localDescription, target: data.from, roomId: roomId, sessionId: sessionId }));
+                    socket.send(JSON.stringify({ type: 'offer', description: peer.pc.localDescription, target: data.from, roomId: roomId, sessionId: sessionId }));
                 }
                 break;
             }
@@ -427,9 +435,6 @@ socket.addEventListener('message', async (event) => {
                     console.warn('Received ICE candidate for unknown peer', data.from);
                 }
             }
-            break;
-        case 'error':
-            console.error('Error from server:', data.message);
             break;
         default:
             console.log('Recieved message from server with unknown type: ' + data.type);

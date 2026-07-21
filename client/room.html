@@ -4,14 +4,13 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="description" content="wow little jim, we communicatin over the innanet">
-        <link rel="stylesheet" href="./output.css">
-        <link rel="manifest" href="./manifest.json">
+        <link rel="stylesheet" href="output.css">
+        <link rel="manifest" href="manifest.json">
         <title>skyecord</title>
     </head>
 
     <body>
         <audio id="application" playsinline hidden></audio>
-
         <div class="flex justify-between items-center w-full bg-skye-gray-light mb-5 border-skye-gray-border border-2 text-[12px]">
             <p id="room-status" class="room-status">
                 "<span id="room-name"></span>" ///// Room ID: <span id="room-id" class="overflow-x-auto"></span> 
@@ -20,7 +19,6 @@
 
             </p>
         </div>
-
         <div id="users-wrapper" class="flex flex-col items-center justify-center">
             <p class="text-[14px] text-white underline">Users</p>
             <br>
@@ -28,8 +26,7 @@
                 <ul id="user-list" class="flex flex-col gap-2"></ul>
             </div>
         </div>
-
-        <div id="call-controls" class="flex w-full bg-skye-gray-light mb-5 border-skye-gray-border border-2 text-[12px]">
+        <div id="call-controls" class="flex  w-full bg-skye-gray-light mb-5 border-skye-gray-border border-2 text-[12px]">
             <button id="leave-room" class="p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover"><img src="./svgicons/call_end.svg" alt="Leave Room"></button>
             <button id="mute-mic" class="p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover"><img src="./svgicons/mic.svg" alt="Mute Microphone"></button>
             <button id="deafen-self" class="p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover"><img src="./svgicons/media_output.svg" alt="Deafen Self"></button>
@@ -62,7 +59,6 @@
                 <button type="button" class="other-controls-close p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Close</button>
             </dialog>
         </div>
-
     </body>
 
     <script src="room.js" defer></script>

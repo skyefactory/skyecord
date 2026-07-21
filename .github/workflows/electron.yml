@@ -56,20 +56,24 @@ jobs:
         uses: morph027/apt-repo-action@v3
         id: create-apt-repo
         env:
-          # Forces GPG to accept passphrases inside non-interactive CI environments
           GPG_TTY: /dev/null
         with:
           repo-name: skyecord
           signing-key: ${{ secrets.APT_PRIVATE_KEY }}
-          # --- FIXED PARAMETER NAMES ---
           signing-key-passphrase: ${{ secrets.APT_PASSPHRASE }}
           scan-dir: out/make
-          # ------------------------------
           codename: stable
           components: main
           architectures: amd64
           import-from-repo-url: ""
           file: ${{ steps.locate_deb.outputs.path }}
+
+      - name: Export APT Public Key
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "${{ secrets.APT_PUBLIC_KEY }}" > public.key
+          gpg --dearmor public.key
+          cp public.key.gpg ${{ steps.create-apt-repo.outputs.dir }}/skyecord-keyring.gpg
 
       - name: Upload APT Repository Artifact
         if: matrix.os == 'ubuntu-latest'

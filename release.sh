@@ -35,6 +35,19 @@ fs.writeFileSync(
 );
 EOF
 
+CLIENT_FILE="client/index.html"
+
+if [[ -f "$CLIENT_FILE" ]]; then
+    echo "Updating client version display..."
+
+    sed -i -E "s/version [0-9]+\.[0-9]+\.[0-9]+/version $NEW_VERSION/g" "$CLIENT_FILE"
+
+    echo "Updated $CLIENT_FILE:"
+    grep "version" "$CLIENT_FILE"
+else
+    echo "Warning: $CLIENT_FILE not found, skipping client version update"
+fi
+
 # Verify change
 git diff package.json
 

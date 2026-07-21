@@ -64,7 +64,7 @@ jobs:
           architectures: amd64
           # Connects to your live repository link to merge new updates safely
           import-from-repo-url: |
-            deb-amd64 https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ stable main
+            ${{ github.run_number > 1 && 'deb-amd64 https://skyefactory.github.io/skyecord/ stable main' || '' }}
           file: ${{ steps.locate_deb.outputs.path }}
 
       - name: Upload APT Repository Artifact

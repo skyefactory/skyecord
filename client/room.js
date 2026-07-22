@@ -48,8 +48,6 @@ let isMuted = false;
 let isDeafened = false;
 let isScreenSharing = false;
 let numPeers = 0;
-let micTrack = null;
-let screenAudioTrack = null;
 const peerConnections = {};
 
 /******************************************************** 
@@ -206,8 +204,6 @@ class Peer {
         this.otherVolume = 1.0;
         this.remoteStatus = { muted: false, deafened: false };
         this.setupPeerConnectionEvents();
-        this.trackMetadata = {};
-        this.pendingTracks = {};
     }
     //Initialization
     async start() {
@@ -217,23 +213,15 @@ class Peer {
             }
 
             console.log("Adding tracks:", localStream.getTracks());
-            micTrack = localStream.getAudioTracks()[0];
 
             for (const track of localStream.getTracks()) {
                 this.pc.addTrack(track, localStream);
-
-                if (track.kind === 'audio') {
-                    socket.send(JSON.stringify({
-                        type: "track-info",
-                        target: this.peerName,
-                        roomId,
-                        sessionId,
-                        trackId: track.id,
-                        mediaType: "microphone"
-                    }));
-                }
             }
 
+            console.log(
+                "Senders:",
+                this.pc.getSenders().map(s => s.track?.kind)
+            );
             console.log(localStream.getAudioTracks()[0].getSettings());
         } catch (err) {
             console.error('Error accessing media devices.', err);
@@ -251,62 +239,58 @@ class Peer {
     onTrack(event) {
         const { track, streams } = event;
 
-        let stream = streams?.[0];
+        let stream = (streams && streams.length) ? streams[0] : null;
         if (!stream) {
-            stream = new MediaStream([track]);
+            stream = new MediaStream();
+            stream.addTrack(track);
         }
 
-        console.log(
-            `Received ${track.kind} track from ${this.peerName}. Track ID: ${track.id}`
-        );
+        const trackType = track.kind;
+        console.log({
+            trackEnabled: track.enabled,
+            trackMuted: track.muted,
+            readyState: track.readyState,
+            streamTracks: stream.getTracks()
+        });
 
-        const type = this.trackMetadata[track.id];
+        if (trackType === 'audio') {
+            const audioId = `audio-${this.peerName}`;
+            let audioElement = document.getElementById(audioId);
+            if (!audioElement) {
+                audioElement = document.createElement('audio');
+                audioElement.id = audioId;
+                audioElement.controls = false;
+                audioElement.hidden = false;
+                audioElement.style.display = 'none';
+                audioElement.autoplay = true;
+                audioElement.playsInline = true;
+                document.body.appendChild(audioElement);
+            }
 
-        if (!type) {
-            console.log(`Waiting for metadata for track ${track.id}`);
+            if (audioElement.srcObject !== stream) {
+                audioElement.srcObject = stream;
+            }
 
-            this.pendingTracks[track.id] = {
-                track,
-                stream
+            const tryPlay = async () => {
+                try {
+                    await audioElement.play();
+                } catch (err) {
+                    console.warn('Autoplay prevented for', audioId, err);
+                }
             };
 
-            return;
+            if (track.readyState === 'live' && !track.muted) {
+                tryPlay();
+            } else {
+                track.onunmute = tryPlay;
+            }
+
+            this.startVoiceDetection(stream);
         }
 
-        this.handleTrack(track, stream, type);
-    }
-    handleTrack(track, stream, type) {
-        if (track.kind === "audio") {
-
-            if (type === "microphone") {
-                console.log(`Received microphone from ${this.peerName}`);
-
-                const audioId = `audio-${this.peerName}`;
-
-                let audioElement = document.getElementById(audioId);
-
-                if (!audioElement) {
-                    audioElement = document.createElement("audio");
-                    audioElement.id = audioId;
-                    audioElement.autoplay = true;
-                    audioElement.hidden = true;
-                    document.body.appendChild(audioElement);
-                }
-
-                audioElement.srcObject = stream;
-
-                this.startVoiceDetection(stream);
-
-            } else if (type === "screen-audio") {
-
-                console.log(`Received screen audio from ${this.peerName}`);
-
-            } else {
-
-                console.warn(
-                    `Unknown audio type ${type} from ${this.peerName}`
-                );
-            }
+        if (trackType === 'video') {
+            console.log(`Received video track from ${this.peerName}, but video is not currently supported.`);
+            playSystemSound(startedVideoAudio);
         }
     }
     onIceCandidate(event) {
@@ -476,115 +460,39 @@ deafenSelfButton.addEventListener('click', () => {
     playSystemSound(isDeafened ? deafenedAudio : undeafenedAudio);
 });
 
-async function startWindowShare(windowSource){
-    try{
-        window.electronScreenShare.setTargetSource(windowSource.id);
-
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-            audio: true,
-            video:{
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
-                frameRate: { ideal: 30 }
-            }
-        });
-
-        const screenTrack = stream.getVideoTracks()[0];
-        
-        const audioTrack = stream.getAudioTracks()[0]; 
-
-        for (const peerName in peerConnections) {
-            const peer = peerConnections[peerName];
-            const pc = peer.pc;
-            
-            const videoSender = pc.getSenders().find(sender => sender.track?.kind === 'video');
-
-            if (videoSender) {
-                videoSender.replaceTrack(screenTrack);   
-            } else {
-                pc.addTrack(screenTrack, stream);
-            }
-            screenAudioTrack = audioTrack;
-
-            if (audioTrack) {
-                const audioSender = pc.getSenders().find(sender => sender.track && sender.track.kind === 'audio' && sender.track === micTrack); 
-                
-                if (audioSender) {
-                     audioSender.replaceTrack(audioTrack);
-                } else {
-                     pc.addTrack(audioTrack, stream);
-                }
-
-                socket.send(JSON.stringify({
-                    type: "track-info",
-                    target: peerName,
-                    roomId,
-                    sessionId,
-                    trackId: audioTrack.id,
-                    mediaType: "screen-audio"
-                }));
-            }
-         }
-         isScreenSharing = true;
-    }
-    catch(err){
-        console.error('Error accessing display media.', err);
-    }
-}
-
-function selectWindowSourceUI() {
-  return new Promise((resolve, reject) => {
-    const modal = document.getElementById('screen-picker-modal');
-    const grid = document.getElementById('picker-sources-grid');
-    const closeBtn = document.getElementById('close-picker-btn');
-
-    grid.innerHTML = '';
-    
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-
-    window.electronScreenShare.getSources().then(sources => {
-      sources.forEach(source => {
-        const item = document.createElement('div');
-
-        item.className = 'bg-[#202225] p-3 rounded-md text-center cursor-pointer transition-all duration-150 hover:bg-[#34373c] hover:scale-[1.02] border border-transparent hover:border-indigo-500/30 group';
-
-        item.innerHTML = `
-          <div class="w-full h-20 bg-black/40 rounded flex items-center justify-center overflow-hidden mb-2 border border-white/5 group-hover:border-white/10">
-            <img src="${source.thumbnail.toDataURL()}" class="w-full h-full object-contain" />
-          </div>
-          <div class="text-xs text-[#dcddde] group-hover:text-white truncate font-medium px-1">${source.name}</div>
-        `;
-
-        item.addEventListener('click', () => {
-          modal.classList.add('hidden');
-          modal.classList.remove('flex');
-          resolve(source); 
-        });
-
-        grid.appendChild(item);
-      });
-    }).catch(reject);
-
-    // Structural closure handlers
-    const cleanUpAndClose = () => {
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      reject(new Error('User cancelled screen share picker.'));
-    };
-
-    closeBtn.onclick = cleanUpAndClose;
-    modal.onclick = (e) => { if(e.target === modal) cleanUpAndClose(); };
-  });
-}
-
 screenShareButton.addEventListener('click', async () => {
     try {
-        const chosenSource = await selectWindowSourceUI();
-        
-        await startWindowShare(chosenSource);
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+            alert('Screen sharing is not supported in this browser.');
+            return;
+        }
+
+        isScreenSharing = !isScreenSharing;
+        if (!isScreenSharing) {
+            for (const peerName in peerConnections) {
+                const sender = peerConnections[peerName].pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                if (sender) {
+                    sender.replaceTrack(null);
+                }
+            }
+            screenShareButton.innerHTML = '<img src="./svgicons/screen_share.svg" alt="Start Screen Share">';
+            return;
+        }
+
+        screenShareButton.innerHTML = '<img src="./svgicons/stop_screen_share.svg" alt="Stop Screen Share">';
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+
+        for (const peerName in peerConnections) {
+            const sender = peerConnections[peerName].pc.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender) {
+                sender.replaceTrack(screenTrack);
+            } else {
+                peerConnections[peerName].pc.addTrack(screenTrack, screenStream);
+            }
+        }
     } catch (err) {
-        console.log(err.message);
+        console.error('Error accessing display media.', err);
     }
 });
 
@@ -646,20 +554,7 @@ socket.addEventListener('message', async (event) => {
             }
             peerConnections[data.from].receiveIceCandidate(data.candidate, data.from);
             break;
-        case 'track-info':
-            const peer = peerConnections[data.from];
-            if (!peer){break;}
-            peer.trackMetadata[data.trackId] = data.mediaType;
-            console.log(`Received track info from ${data.from}: Track ID ${data.trackId}, Media Type ${data.mediaType}`);
-
-            const pending = peer.pendingTracks[data.trackId];
-            if (pending) {
-                peer.handleTrack(pending.track, pending.stream, data.mediaType);
-                delete peer.pendingTracks[data.trackId];
-            }
-            break;
         default:
             console.log('Recieved message from server with unknown type: ' + data.type);
     }
 });
-

@@ -10,6 +10,20 @@
     </head>
 
     <body>
+        <div id="screen-picker-modal" class="hidden fixed inset-0 bg-black/80 z-[9999] items-center justify-center font-sans">
+        <div class="bg-[#2f3136] p-5 rounded-lg w-4/5 max-w-xl text-white shadow-2xl border border-white/5">
+            
+            <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold tracking-wide text-[#f2f3f5]">Share your screen</h3>
+            <button id="close-picker-btn" class="bg-transparent border-0 text-zinc-400 hover:text-white cursor-pointer text-2xl p-1 transition-colors">&times;</button>
+            </div>
+
+            <div id="picker-sources-grid" class="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4 max-height-[400px] max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+
+            </div>
+            
+        </div>
+        </div>
         <audio id="application" playsinline hidden></audio>
         <div class="flex justify-between items-center w-full bg-skye-gray-light mb-5 border-skye-gray-border border-2 text-[12px]">
             <p id="room-status" class="room-status">

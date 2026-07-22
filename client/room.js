@@ -5,7 +5,7 @@ import {isRunningInElectron, getStoredValue, setStoredValue,debugLog, sendDebugL
 ********************************************************/
 //Url parameters
 
-const displayName = new URLSearchParams(window.location.search).get('name');
+var displayName = new URLSearchParams(window.location.search).get('name');
 const roomId = new URLSearchParams(window.location.search).get('roomId');
 
 //Audio
@@ -106,9 +106,6 @@ function updateControlAvailability() {
 }
 
 function updateUserCountandList(users, numusers) {
-    for(peerName in peerConnections) {
-        console.log('Checking peer connection for', peerName);
-    };
     if (numusers > numPeers + 1) {
         playSystemSound(joinedAudio);
     } else if (numusers < numPeers + 1) {
@@ -135,20 +132,21 @@ function updateUserCountandList(users, numusers) {
                 controlsInstance.style.display = 'inline';
                 bindDialogControls(controlsInstance, '.self-controls-open', 'dialog', '.self-controls-close');
                 listItem.appendChild(controlsInstance);
-                const saveButton = document.querySelector('.save-button-self-controls');
+                const saveButton = controlsInstance.querySelector('.save-button-self-controls');
                 debugLog('Save button element:', saveButton);
                 if (saveButton) {
                     saveButton.addEventListener('click', () => {
                         debugLog('Save button clicked. Updating nickname.');
-                        const nicknameInput = document.getElementById('nickname-input');
+                        const nicknameInput = controlsInstance.querySelector('.nickname-input');
+                        console.log('Nickname input value:', nicknameInput.value);
                         if (nicknameInput) {
                             const newNickname = nicknameInput.value.trim();
                             setStoredValue('nickname', newNickname);
                             if(newNickname && newNickname !== displayName  && newNickname !== '') {
-                                socket.send(JSON.stringify({ type: 'update-displayname', newNickname: newNickname, roomId: roomId, sessionId: sessionId }));
+                                socket.send(JSON.stringify({ type: 'update-displayname', oldName: displayName, newName: newNickname, roomId: roomId, sessionId: sessionId }));
                             }
                         }
-                        const dialog = document.getElementById('self-controls-dialog');
+                        const dialog = controlsInstance.querySelector('dialog');
                         if (dialog) {
                             dialog.close();
                         }
@@ -460,6 +458,10 @@ class Peer {
 
 leaveRoomButton.addEventListener('click', () => {
     playSystemSound(goodByeAudio);
+    for (const peerName in peerConnections) {
+        peerConnections[peerName].pc.close();
+    }
+    peerConnections = {};
     socket.close(1000, 'User left the room');
 });
 
@@ -584,6 +586,21 @@ socket.addEventListener('message', async (event) => {
                 break;
             }
             peerConnections[data.from].receiveIceCandidate(data.candidate, data.from);
+            break;
+        case 'change_displayname':
+            const peer = peerConnections[data.oldName];
+            if(data.oldName === displayName) {
+                displayName = data.newName;
+            }
+            if (peer) {
+                peer.peerName = data.newName;
+                peerConnections[data.newName] = peer;
+                delete peerConnections[data.oldName];
+            }
+            const url = new URL(window.location.href);
+            url.searchParams.set('name', data.newName);
+            window.history.replaceState({}, '', url);
+            updateUserCountandList(data.users, data.numusers);
             break;
         default:
             console.log('Recieved message from server with unknown type: ' + data.type);

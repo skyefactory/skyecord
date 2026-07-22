@@ -91,15 +91,20 @@ async function isAuthenticated() {
 }
 
 function setNewJoinVisibility(isVisible) {
-    newJoinForm.style.display = isVisible ? 'block' : 'none';
-    quickJoin.style.display = isVisible ? 'flex' : 'none';
+    if(isVisible){
+        newJoinForm.classList.remove("hidden");
+        quickJoin.classList.remove("hidden");
+    } else{
+        newJoinForm.classList.add("hidden");
+        quickJoin.classList.add("hidden");
+    }
 }
 
 function goBackToHome() {
-    newRoomForm.style.display = 'none';
-    joinForm.style.display = 'none';
+    newRoomForm.classList.add("hidden");
+    joinForm.classList.add("hidden");
+    document.getElementById('room-created-screen').classList.add("hidden");
     setNewJoinVisibility(true);
-    document.getElementById('room-created-screen').style.display = 'none';
 }
 
 function createDeleteRoomControls(ownRoom, sessionId) {
@@ -267,9 +272,10 @@ async function loadFavorites() {
 function joinRoom(roomId) {
     const nickname = getStoredValue('nickname');
     if (!nickname) {
-        joinForm.style.display = 'block';
+        joinForm.classList.remove("hidden");
         document.getElementById('room-id').value = roomId;
-        newRoomForm.style.display = 'none';
+        newRoomForm.classList.add("hidden");
+        quickJoin.classList.add("hidden");
         setNewJoinVisibility(false);
         return;
     }
@@ -312,10 +318,10 @@ async function createRoom(roomName) {
         const data = await response.json();
         if (data.success) {
             document.getElementById('room-id-display').textContent = data.roomId;
-            newRoomForm.style.display = 'none';
-            joinForm.style.display = 'none';
+            newRoomForm.classList.add("hidden");
+            joinForm.classList.add("hidden");
             setNewJoinVisibility(false);
-            document.getElementById('room-created-screen').style.display = 'block';
+            document.getElementById('room-created-screen').classList.remove("hidden");
             loadFavorites();
             setErrorMessage('');
         } else {
@@ -374,10 +380,11 @@ logonForm.addEventListener('submit', async (event) => {
         const data = await response.json();
         if (data.success) {
             setStoredValue('session_id', data.sessionId);
-            logonForm.style.display = 'none';
-            newRoomForm.style.display = 'none';
+            logonForm.classList.add("hidden");
+            newRoomForm.classList.add("hidden");
             setNewJoinVisibility(true);
-            joinForm.style.display = 'none';
+            joinForm.classList.add("hidden");
+            quickJoin.classList.add("hidden");
             setErrorMessage('');
             loadFavorites();
         } else {
@@ -396,8 +403,9 @@ document.getElementById('create-room-btn').addEventListener('click', async (even
         return;
     }
 
-    newRoomForm.style.display = 'block';
-    joinForm.style.display = 'none';
+    newRoomForm.classList.remove("hidden");
+    joinForm.classList.add("hidden");
+    quickJoin.classList.add("hidden");
     setNewJoinVisibility(false);
 });
 
@@ -408,9 +416,10 @@ document.getElementById('join-room-btn').addEventListener('click', async (event)
         return;
     }
 
-    newRoomForm.style.display = 'none';
+    newRoomForm.classList.add("hidden");
+    quickJoin.classList.add("hidden");
     setNewJoinVisibility(false);
-    joinForm.style.display = 'block';
+    joinForm.classList.remove("hidden");
 });
 
 joinForm.addEventListener('submit', async (event) => {
@@ -433,15 +442,16 @@ joinForm.addEventListener('submit', async (event) => {
 
 window.addEventListener('DOMContentLoaded', async () => {
     if (await isAuthenticated()) {
-        logonForm.style.display = 'none';
-        newRoomForm.style.display = 'none';
+        logonForm.classList.add("hidden");
+        newRoomForm.classList.add("hidden");
         setNewJoinVisibility(true);
-        joinForm.style.display = 'none';
+        joinForm.classList.add("hidden");
         loadFavorites();
     } else {
-        logonForm.style.display = 'block';
-        newRoomForm.style.display = 'none';
+        logonForm.classList.remove("hidden");
+        newRoomForm.classList.add("hidden");
         setNewJoinVisibility(false);
-        joinForm.style.display = 'none';
+        joinForm.classList.add("hidden");
+        quickJoin.classList.add("hidden");
     }
 });

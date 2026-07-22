@@ -1,35 +1,46 @@
 if(require('electron-squirrel-startup')) return;
 
-const { app, BrowserWindow, session, Menu } = require('electron/main'); 
+const { app, BrowserWindow, session, Menu, desktopCapturer, ipcMain } = require('electron/main'); 
 const { updateElectronApp } = require('update-electron-app');
 const path = require('path');
 
 updateElectronApp();
 
-// REMOVED: The old app.on('web-contents-created') block has been removed to avoid conflicts.
+ipcMain.handle('get-share-sources', async() =>{
+    return await desktopCapturer.getSources({
+        types: ['window', 'screen'],
+        thumbnailSize: { width: 150, height: 150 },
+    });
+});
+
+let selectedSourceId = null;
+
+ipcMain.on('set-selected-source', (event, id) => {
+    selectedSourceId = id;
+});
 
 const createWindow = () => {
-    // Note: Creating a BrowserWindow automatically initializes the defaultSession.
     const win = new BrowserWindow({
         width: 800,
         height: 650,
         webPreferences: {
+            preload: path.join(__dirname, "preload.js"),
             nodeIntegration: false,
             contextIsolation: true
-        }
+        },
+        resizable: false
     });
 
-    // Unified Permission Handler
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        console.log("Permission requested:", permission); // This will log 'audioCapture' for microphones
+        console.log("Permission requested:", permission);
 
-        const allowedPermissions = ['audioCapture', 'videoCapture', 'display-capture', 'media'];
+        const allowedPermissions = ['audioCapture', 'videoCapture', 'display-capture', 'media', 'clipboard-read', 'clipboard-sanitized-write'];
         
         if (allowedPermissions.includes(permission)) {
-            return callback(true); // Automatically grant permission
+            return callback(true);
         }
         
-        callback(false); // Reject everything else
+        callback(false);
     });
 
     win.loadFile(
@@ -38,6 +49,25 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
+    session.defaultSession.setDisplayMediaRequestHandler((request,callback) =>{
+        if(selectedSourceId){
+            desktopCapturer.getSources({ types: ['window', 'screen'] }).then(sources => {
+                const targetSource = sources.find(source => source.id === selectedSourceId);
+                if(targetSource){
+                    callback({
+                        video: targetSource,
+                        audio: 'loopback'
+                    });
+                } else{
+                    callback({
+                        error: 'No source found with the selected ID'
+                    })
+                }
+            });
+        }
+    });
+
+
     createWindow();
 
     app.on('activate', () => {

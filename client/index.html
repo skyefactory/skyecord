@@ -1,5 +1,4 @@
 <html>
-
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,62 +10,114 @@
 
     <body class="h-screen overflow-hidden">
         <div class="flex items-center justify-center">
-            <h1 class="rainbow-text-animated ">skyecord</h1>
+            <h1 class="rainbow-text-animated">skyecord</h1>
         </div>
 
         <hr>
+
         <div id="form-container" class="bg-skye-gray text-white p-5 shadow-md">
-            <form id="login-form" style="display: none;">
-                <input type="text" id="username" class="w-[90%] p-2.5 ml-5 text-[16px] mb-2.5 bg-skye-gray-input text-white box-border" placeholder="Username"> <br> <br>
-                <input type="password" id="password" class="w-[90%] p-2.5 ml-5 text-[16px] mb-2.5 bg-skye-gray-input text-white box-border" placeholder="Password"> <br> <br>
-                <button type="submit" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Login</button>
+
+            <form id="login-form" style="display: none;" class="flex flex-col items-center">
+                <input type="text" id="username"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-input text-white box-border"
+                    placeholder="Username">
+                <br><br>
+                <input type="password" id="password"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-input text-white box-border"
+                    placeholder="Password">
+                <br><br>
+                <button type="submit"
+                    class="w-[90%] p-2.5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Login
+                </button>
             </form>
 
-            <form id="new-join-form" style="display: none;">
-                <button id="create-room-btn" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Create Room</button> <br> <br>
-                <button id="join-room-btn" type="submit" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Join Room</button>
+            <form id="new-join-form" class="flex flex-col items-center max-w-md mx-auto hidden">
+                <button id="create-room-btn"
+                    class="w-full p-2.5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Create Room
+                </button>
+                <br><br>
+                <button id="join-room-btn" type="submit"
+                    class="w-full p-2.5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Join Room
+                </button>
             </form>
 
-            <form id="new-room-form" style="display: none;">
-                <input type="text" id="room-name" class="w-[90%] p-2.5 ml-5 text-[16px] mb-2.5 bg-skye-gray-input text-white box-border" placeholder="Name"> <br> <br>
-                <button type="submit" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Submit</button> <br> <br>
-                <button id="back-to-home-btn-new-room" type="button" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Back</button>
+
+            <form id="new-room-form" class="flex flex-col items-center hidden">
+                <input type="text" id="room-name"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-input text-white box-border"
+                    placeholder="Name">
+                <br><br>
+                <button type="submit"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Submit
+                </button>
+                <br><br>
+                <button id="back-to-home-btn-new-room" type="button"
+                    class="w-[90%] p-2.5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Back
+                </button>
             </form>
 
-            <form id="join-form" style="display: none;">
-                <input type="text" id="display-name" class="w-[90%] p-2.5 ml-5 text-[16px] mb-2.5 bg-skye-gray-input text-white box-border" placeholder="Name"> <br> <br>
-                <input type="text" id="room-id" class="w-[90%] p-2.5 ml-5 text-[16px] mb-2.5 bg-skye-gray-input text-white box-border" placeholder="Room ID"> <br> <br>
-                <button type="submit" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Join Room</button> <br> <br>
-                <button id="back-to-home-btn-join" type="button" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Back</button>
+            <form id="join-form" class="flex flex-col items-center hidden">
+                <input type="text" id="display-name"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-input text-white box-border"
+                    placeholder="Name">
+                <br><br>
+                <input type="text" id="room-id"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-input text-white box-border"
+                    placeholder="Room ID">
+                <br><br>
+                <button type="submit"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Join Room
+                </button>
+                <br><br>
+                <button id="back-to-home-btn-join" type="button"
+                    class="w-[90%] p-2.5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Back
+                </button>
             </form>
 
-            <div id="room-created-screen" style="display: none;">
-                <p class="text-[16px] text-white">Room created successfully. Your room ID is: </p>
-                <p id="room-id-display" class="text-[14px] text-white"></p>
-                <button id="copy-room-id-btn" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Copy Room ID</button> <br> <br>
-                <button id="back-to-home-btn-created" type="button" class="w-[90%] p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Back</button>
-            <br>
+            <div id="room-created-screen" class="flex flex-col items-center hidden">
+                <p class="text-[16px] text-white mb-2">
+                    Room created successfully. Your room ID is:
+                </p>
+
+                <p id="room-id-display" class="text-[14px] text-white mb-4"></p>
+
+                <button id="copy-room-id-btn"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Copy Room ID
+                </button>
+                <br><br>
+                <button id="back-to-home-btn-created" type="button"
+                    class="w-[90%] p-2.5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Back
+                </button>
             </div>
 
             <div class="flex items-center justify-center">
                 <p id="error-msg" class="text-[rgb(148,2,2)] text-[10px] mt-2.5"></p>
             </div>
-            
-            <div id="quick-join" style="display: none;" class="flex flex-col items-center justify-center">
+
+            <div id="quick-join" class="flex flex-col items-center justify-center hidden">
                 <br>
-                <div id="rooms" class="h-[40vh] w-[90%] overflow-y-auto border border-gray-300 p-4 bg-skye-gray-darker rounded">
+                <div id="rooms"
+                    class="h-[40vh] w-[90%] overflow-y-auto border border-gray-300 p-4 bg-skye-gray-darker rounded">
                 </div>
             </div>
         </div>
 
         <hr>
         <br>
-        
 
         <footer class="text-center text-white text-[12px] mt-4">
-            <p> version 0.0.13</p>
+            <p>version 0.0.14</p>
         </footer>
-    </body>
 
-    <script src="index.js" defer></script>
+        <script src="index.js" defer></script>
+    </body>
 </html>

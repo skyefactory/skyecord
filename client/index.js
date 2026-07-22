@@ -1,21 +1,6 @@
-if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-    console.log('Running in standalone mode');
-    window.resizeTo(400, 600);
-    window.addEventListener('resize', () => {
-        console.log('Window resized to:', window.innerWidth, 'x', window.innerHeight);
-        window.resizeTo(400, 600);
-    });
+import {isRunningInElectron, getStoredValue, setStoredValue, sendDebugLogs, debugLog} from './common.js';
 
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', () => {
-            const isMaximized = window.visualViewport.width === screen.availWidth;
-            if (isMaximized) {
-                console.log('PWA caught maximization via Visual Viewport.');
-                window.resizeTo(400, 600);
-            }
-        });
-    }
-}
+debugLog('isRunningInElectron: ' + isRunningInElectron);
 
 const logonForm = document.getElementById('login-form');
 const newRoomForm = document.getElementById('new-room-form');
@@ -28,6 +13,7 @@ let errorMsgTimeoutId = null;
 const logonApi = 'https://auth.skyefactory.com/login';
 const verifySessionApi = 'https://auth.skyefactory.com/verify-session';
 const createRoomApi = 'https://auth.skyefactory.com/room';
+
 
 function copyText(buttonId, textId) {
     const textElement = document.getElementById(textId);
@@ -59,18 +45,10 @@ function setErrorMessage(message) {
     }
 }
 
-function getStoredValue(key) {
-    return localStorage.getItem(key) ?? '';
-}
-
-function setStoredValue(key, value) {
-    localStorage.setItem(key, value);
-}
-
 async function isAuthenticated() {
     const sessionId = getStoredValue('session_id');
     if (!sessionId) {
-        console.log('No session ID found in cookies.');
+    
         return false;
     }
 
@@ -229,7 +207,6 @@ async function loadFavorites() {
     }
 
     const data = await response.json();
-    console.log('Favorites:', data);
 
     const roomsContainer = document.getElementById('rooms');
     roomsContainer.innerHTML = '';
@@ -312,7 +289,6 @@ async function createRoom(roomName) {
         },
         body: JSON.stringify({ operation: 'create', roomName, sessionId })
     });
-    console.log('Create room response:', response);
 
     if (response.ok) {
         const data = await response.json();
@@ -384,7 +360,6 @@ logonForm.addEventListener('submit', async (event) => {
             newRoomForm.classList.add("hidden");
             setNewJoinVisibility(true);
             joinForm.classList.add("hidden");
-            quickJoin.classList.add("hidden");
             setErrorMessage('');
             loadFavorites();
         } else {

@@ -1,3 +1,5 @@
+import {isRunningInElectron, getStoredValue, setStoredValue,debugLog, sendDebugLogs} from './common.js';
+
 /******************************************************** 
  * Constants
 ********************************************************/
@@ -43,7 +45,7 @@ const constraints = {
 
 //State
 
-let localStream = null;
+let localMicrophoneStream = null;
 let isMuted = false;
 let isDeafened = false;
 let isScreenSharing = false;
@@ -133,6 +135,25 @@ function updateUserCountandList(users, numusers) {
                 controlsInstance.style.display = 'inline';
                 bindDialogControls(controlsInstance, '.self-controls-open', 'dialog', '.self-controls-close');
                 listItem.appendChild(controlsInstance);
+                const saveButton = document.querySelector('.save-button-self-controls');
+                debugLog('Save button element:', saveButton);
+                if (saveButton) {
+                    saveButton.addEventListener('click', () => {
+                        debugLog('Save button clicked. Updating nickname.');
+                        const nicknameInput = document.getElementById('nickname-input');
+                        if (nicknameInput) {
+                            const newNickname = nicknameInput.value.trim();
+                            setStoredValue('nickname', newNickname);
+                            if(newNickname && newNickname !== displayName  && newNickname !== '') {
+                                socket.send(JSON.stringify({ type: 'update-displayname', newNickname: newNickname, roomId: roomId, sessionId: sessionId }));
+                            }
+                        }
+                        const dialog = document.getElementById('self-controls-dialog');
+                        if (dialog) {
+                            dialog.close();
+                        }
+                    });
+                } 
             }
         } else {
             listItem.className = 'p-1 bg-skye-gray-input text-white w-[75%]';
@@ -158,13 +179,7 @@ async function updatePeers(users) {
 // Utility Functions
 
 
-function getStoredValue(key) {
-    return localStorage.getItem(key) ?? '';
-}
 
-function setStoredValue(key, value) {
-    localStorage.setItem(key, value);
-}
 
 function isAudioOverThreshold(threshold, analyser){
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -190,6 +205,15 @@ bindDialogControls(document.getElementById('other-controls'), '.other-controls-o
 /******************************************************** 
  * Peer Class
 ********************************************************/
+class PeerStreams{
+    constructor() {
+        this.microphoneAudio = null; // This is the remote microphone audio stream from the peer
+        this.camVideo = null; // This is the remote camera video stream from the peer
+        this.screenAudio = null; // This is the remote screen share audio stream from the peer
+        this.screenVideo = null; // This is the remote screen share video stream from the peer
+    }
+}
+
 
 class Peer {
     //Constructor
@@ -203,27 +227,32 @@ class Peer {
         this.isSettingRemoteAnswerPending = false;
         this.otherVolume = 1.0;
         this.remoteStatus = { muted: false, deafened: false };
+        this.remoteStreams = new PeerStreams();
         this.setupPeerConnectionEvents();
     }
     //Initialization
     async start() {
         try {
-            if (localStream === null) {
-                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            //Local Microphone Stream is OUR microphone. This is what we send to the peer. This is shared across all peers.
+            //Each peer will have a corresponding 'Remote Stream' which is their own microphone audio they send to us.
+
+            if (localMicrophoneStream === null) {
+                localMicrophoneStream = await navigator.mediaDevices.getUserMedia(constraints);
             }
 
-            console.log("Adding tracks:", localStream.getTracks());
+            console.log("Adding tracks:", localMicrophoneStream.getTracks());
 
-            for (const track of localStream.getTracks()) {
-                this.pc.addTrack(track, localStream);
+            for (const track of localMicrophoneStream.getTracks()) {
+                this.pc.addTrack(track, localMicrophoneStream);
             }
 
             console.log(
                 "Senders:",
                 this.pc.getSenders().map(s => s.track?.kind)
             );
-            console.log(localStream.getAudioTracks()[0].getSettings());
+            console.log(localMicrophoneStream.getAudioTracks()[0].getSettings());
         } catch (err) {
+            alert('skyecord was unable to access your microphone. Check if your browser is requesting permissions or if you have it blocked.')
             console.error('Error accessing media devices.', err);
         }
     }
@@ -254,6 +283,7 @@ class Peer {
         });
 
         if (trackType === 'audio') {
+            this.remoteStreams.microphoneAudio = stream;
             const audioId = `audio-${this.peerName}`;
             let audioElement = document.getElementById(audioId);
             if (!audioElement) {
@@ -434,9 +464,9 @@ leaveRoomButton.addEventListener('click', () => {
 });
 
 muteMicButton.addEventListener('click', () => {
-    if (localStream) {
+    if (localMicrophoneStream) {
         isMuted = !isMuted;
-        localStream.getAudioTracks().forEach(track => {
+        localMicrophoneStream.getAudioTracks().forEach(track => {
             track.enabled = !isMuted;
         });
         muteMicButton.innerHTML = isMuted
@@ -492,6 +522,7 @@ screenShareButton.addEventListener('click', async () => {
             }
         }
     } catch (err) {
+        alert('skyecord was unable to access your display for screen sharing. Check if your browser is requesting permissions or if you have it blocked.')
         console.error('Error accessing display media.', err);
     }
 });

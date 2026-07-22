@@ -214,7 +214,7 @@ class PeerStreams{
 
 
 class Peer {
-    //Constructor
+    // Constructor
     constructor(peerName) {
         this.peerName = peerName;
         this.iceCandidateQueue = [];
@@ -226,7 +226,87 @@ class Peer {
         this.otherVolume = 1.0;
         this.remoteStatus = { muted: false, deafened: false };
         this.remoteStreams = new PeerStreams();
+        
+        this.chatChannel = null;
+        this.statusChannel = null;
+
         this.setupPeerConnectionEvents();
+        this.setupDataChannels();
+    }
+
+    setupDataChannels() {
+        if (!this.polite) {
+            this.chatChannel = this.pc.createDataChannel('chat-channel', { negotiated: false });
+            this.statusChannel = this.pc.createDataChannel('status-channel', { negotiated: false });
+            
+            this.bindChannelEvents(this.chatChannel, 'chat');
+            this.bindChannelEvents(this.statusChannel, 'status');
+        } else {
+            this.pc.ondatachannel = (event) => {
+                const channel = event.channel;
+                if (channel.label === 'chat-channel') {
+                    this.chatChannel = channel;
+                    this.bindChannelEvents(this.chatChannel, 'chat');
+                } else if (channel.label === 'status-channel') {
+                    this.statusChannel = channel;
+                    this.bindChannelEvents(this.statusChannel, 'status');
+                }
+            };
+        }
+    }
+
+    bindChannelEvents(channel, type) {
+        channel.onopen = () => {
+            debugLog(` channel [${type}] with ${this.peerName} is OPEN`);
+            // Example: Send initial local status once channel opens
+            if (type === 'status') {
+                debugLog(`Sending initial status to ${this.peerName}: muted=${isMuted}, deafened=${isDeafened}`);
+                this.sendStatusUpdate({ muted: isMuted, deafened: isDeafened });
+            }
+        };
+
+        channel.onclose = () => {
+            debugLog(` channel [${type}] with ${this.peerName} is CLOSED`);
+        };
+
+        channel.onerror = (error) => {
+            console.error(` channel [${type}] error with ${this.peerName}:`, error);
+        };
+
+        channel.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (type === 'chat') {
+                    this.handleIncomingChat(data);
+                } else if (type === 'status') {
+                    this.handleIncomingStatus(data);
+                }
+            } catch (err) {
+                console.error(`Failed parsing message on channel [${type}]:`, err);
+            }
+        };
+    }
+
+    sendChatMessage(text) {
+        if (this.chatChannel && this.chatChannel.readyState === 'open') {
+            this.chatChannel.send(JSON.stringify({ sender: displayName, text: text, timestamp: Date.now() }));
+        }
+    }
+
+    sendStatusUpdate(statusObj) {
+        if (this.statusChannel && this.statusChannel.readyState === 'open') {
+            this.statusChannel.send(JSON.stringify(statusObj));
+        }
+    }
+
+    handleIncomingChat(data) {
+        debugLog(`Chat from ${this.peerName}:`, data.text);
+    }
+
+    handleIncomingStatus(data) {
+        debugLog(`Status update from ${this.peerName}:`, data);
+        this.remoteStatus.muted = data.muted;
+        this.remoteStatus.deafened = data.deafened;                    
     }
     //Initialization
     async start() {
@@ -459,9 +539,21 @@ class Peer {
 leaveRoomButton.addEventListener('click', () => {
     playSystemSound(goodByeAudio);
     for (const peerName in peerConnections) {
+        peerConnections[peerName].stopVoiceDetection();
+        peerConnections[peerName].chatChannel.close();
+        peerConnections[peerName].statusChannel.close();
+        peerConnections[peerName].pc.ontrack = null;
+        peerConnections[peerName].pc.onicecandidate = null;
+        peerConnections[peerName].pc.onconnectionstatechange = null;
+        peerConnections[peerName].pc.onnegotiationneeded = null;
+        peerConnections[peerName].pc.ondatachannel = null;
+        const audioElement = document.getElementById(`audio-${peerName}`);
+        if (audioElement) {
+            audioElement.srcObject = null;
+            audioElement.remove();
+        }
         peerConnections[peerName].pc.close();
     }
-    peerConnections = {};
     socket.close(1000, 'User left the room');
 });
 

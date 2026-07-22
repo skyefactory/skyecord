@@ -207,6 +207,7 @@ class Peer {
         this.remoteStatus = { muted: false, deafened: false };
         this.setupPeerConnectionEvents();
         this.trackMetadata = {};
+        this.pendingTracks = {};
     }
     //Initialization
     async start() {
@@ -250,61 +251,62 @@ class Peer {
     onTrack(event) {
         const { track, streams } = event;
 
-        let stream = (streams && streams.length) ? streams[0] : null;
+        let stream = streams?.[0];
         if (!stream) {
-            stream = new MediaStream();
-            stream.addTrack(track);
+            stream = new MediaStream([track]);
         }
 
-        const trackType = track.kind;
+        console.log(
+            `Received ${track.kind} track from ${this.peerName}. Track ID: ${track.id}`
+        );
+
         const type = this.trackMetadata[track.id];
-        if (trackType === 'audio') {
-            if (type === 'microphone') {
-                console.log(`Received microphone track from ${this.peerName}`);
+
+        if (!type) {
+            console.log(`Waiting for metadata for track ${track.id}`);
+
+            this.pendingTracks[track.id] = {
+                track,
+                stream
+            };
+
+            return;
+        }
+
+        this.handleTrack(track, stream, type);
+    }
+    handleTrack(track, stream, type) {
+        if (track.kind === "audio") {
+
+            if (type === "microphone") {
+                console.log(`Received microphone from ${this.peerName}`);
+
                 const audioId = `audio-${this.peerName}`;
+
                 let audioElement = document.getElementById(audioId);
+
                 if (!audioElement) {
-                    audioElement = document.createElement('audio');
+                    audioElement = document.createElement("audio");
                     audioElement.id = audioId;
-                    audioElement.controls = false;
-                    audioElement.hidden = false;
-                    audioElement.style.display = 'none';
                     audioElement.autoplay = true;
-                    audioElement.playsInline = true;
+                    audioElement.hidden = true;
                     document.body.appendChild(audioElement);
                 }
 
-                if (audioElement.srcObject !== stream) {
-                    audioElement.srcObject = stream;
-                }
-
-                const tryPlay = async () => {
-                    try {
-                        await audioElement.play();
-                    } catch (err) {
-                        console.warn('Autoplay prevented for', audioId, err);
-                    }
-                };
-
-                if (track.readyState === 'live' && !track.muted) {
-                    tryPlay();
-                } else {
-                    track.onunmute = tryPlay;
-                }
+                audioElement.srcObject = stream;
 
                 this.startVoiceDetection(stream);
 
-            } else if (type === 'screen-audio') {
-                console.log(`Received screen audio track from ${this.peerName}`);
-            } else {
-                console.log(`Received unknown audio track type from ${this.peerName}`);
-            }
-            
-        }
+            } else if (type === "screen-audio") {
 
-        if (trackType === 'video') {
-            console.log(`Received video track from ${this.peerName}, but video is not currently supported.`);
-            playSystemSound(startedVideoAudio);
+                console.log(`Received screen audio from ${this.peerName}`);
+
+            } else {
+
+                console.warn(
+                    `Unknown audio type ${type} from ${this.peerName}`
+                );
+            }
         }
     }
     onIceCandidate(event) {
@@ -645,7 +647,16 @@ socket.addEventListener('message', async (event) => {
             peerConnections[data.from].receiveIceCandidate(data.candidate, data.from);
             break;
         case 'track-info':
-            peerConnections[data.from].trackMetadata[data.trackId] = data.mediaType;
+            const peer = peerConnections[data.from];
+            if (!peer){break;}
+            peer.trackMetadata[data.trackId] = data.mediaType;
+            console.log(`Received track info from ${data.from}: Track ID ${data.trackId}, Media Type ${data.mediaType}`);
+
+            const pending = peer.pendingTracks[data.trackId];
+            if (pending) {
+                peer.handleTrack(pending.track, pending.stream, data.mediaType);
+                delete peer.pendingTracks[data.trackId];
+            }
             break;
         default:
             console.log('Recieved message from server with unknown type: ' + data.type);

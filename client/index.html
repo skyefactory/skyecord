@@ -87,10 +87,20 @@
                 </p>
 
                 <p id="room-id-display" class="text-[14px] text-white mb-4"></p>
-
+                <p class="text-[16px] text-white mb-2">
+                    Your room secret is:
+                </p>
+                <p id="room-secret-display" class="text-[14px] text-white mb-4"></p>
+                <p class="text-[12px] text-red-500 mb-4">
+                    Please save this secret. It is required to use text chat in the room. Others joining the room will require this secret. This will not be shown again.
+                </p>
                 <button id="copy-room-id-btn"
                     class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
                     Copy Room ID
+                </button>
+                <button id="copy-room-secret-btn"
+                    class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
+                    Copy Room Secret
                 </button>
                 <br><br>
                 <button id="back-to-home-btn-created" type="button"
@@ -116,7 +126,7 @@
         <br>
 
         <footer class="text-center text-white text-[12px] mt-4">
-            <p>version 0.0.21</p>
+            <p>version 0.0.22</p>
         </footer>
 
         <script type="module" src="index.js" defer></script>

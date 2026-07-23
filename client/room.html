@@ -33,12 +33,32 @@
 
             </p>
         </div>
-        <div id="users-wrapper" class="flex flex-col items-center justify-center">
-            <p class="text-[14px] text-white underline">Users</p>
-            <br>
-            <div class="h-[40vh] w-[90%] overflow-y-auto border border-gray-300 p-4 bg-skye-gray-darker rounded">
-                <ul id="user-list" class="flex flex-col gap-2"></ul>
+        <div class="flex gap-4">
+            <div id="users-wrapper" class="flex flex-col w-1/2">
+                <p class="text-[14px] text-white underline">Users</p>
+                <div class="h-[40vh] overflow-y-auto border border-gray-300 p-4 bg-skye-gray-darker rounded">
+                    <ul id="user-list" class="flex flex-col gap-2"></ul>
+                </div>
+
+
             </div>
+
+            <div id="text-chat-wrapper" class="flex flex-col w-1/2">
+                <p class="text-[14px] text-white underline">Text Chat</p>
+
+                <div class="flex flex-col h-[40vh] border border-gray-300 p-4 bg-skye-gray-darker rounded">
+
+                    <div id="text-chat-container"
+                        class="flex-1 min-h-0 overflow-y-auto border border-gray-300 p-4 bg-skye-gray">
+                        <ul id="text-chat-messages" class="flex flex-col gap-2"></ul>
+                    </div>
+                    <div id="input-text-wrapper" class="flex mt-2">
+                        <input type="text" id="text-chat-input" class="flex-grow p-2.5 bg-skye-gray-light text-white rounded" placeholder="Type a message...">
+                        <button id="text-chat-send" class="ml-2 p-2.5 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Send</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
         <div id="call-controls" class="flex  w-full bg-skye-gray-light mb-5 border-skye-gray-border border-2 text-[12px]">
             <button id="leave-room" class="p-2.5 ml-5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover"><img src="./svgicons/call_end.svg" alt="Leave Room"></button>

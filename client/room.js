@@ -1,5 +1,6 @@
 import {isRunningInElectron, getStoredValue, setStoredValue,debugLog, sendDebugLogs} from './common.js';
-
+console.log('isRunningInElectron:', isRunningInElectron);
+console.log('sendDebugLogs:', sendDebugLogs);
 /******************************************************** 
  * Constants
 ********************************************************/
@@ -24,6 +25,11 @@ const deafenSelfButton = document.getElementById('deafen-self');
 const leaveRoomButton = document.getElementById('leave-room');
 const screenShareButton = document.getElementById('screen-share');
 const videoButton = document.getElementById('video');
+const textChatInput = document.getElementById('text-chat-input');
+const textChatSendButton = document.getElementById('text-chat-send');
+const textChatMessagesList = document.getElementById('text-chat-messages');
+const textChatContainer = document.getElementById('text-chat-container');
+
 
 //Auth
 const sessionId = getStoredValue('session_id');
@@ -122,9 +128,10 @@ function updateUserCountandList(users, numusers) {
 
     users.forEach(user => {
         const listItem = document.createElement('li');
+        listItem.id = 'userlist-' + user;
         if (user === displayName) {
             listItem.textContent = user + ' (You)';
-            listItem.className = 'p-1 bg-[rgb(60, 60, 30)] text-white font-bold ';
+            listItem.className = 'p-1 bg-gray-500 text-white font-bold ';
 
             const selfControls = document.getElementById('self-controls');
             const controlsInstance = selfControls.cloneNode(true);
@@ -157,8 +164,37 @@ function updateUserCountandList(users, numusers) {
             listItem.className = 'p-1 bg-skye-gray-input text-white w-[75%]';
             listItem.textContent = user;
         }
+        const mutedIndicator = document.createElement('img');
+        mutedIndicator.id = 'muted-indicator-' + user;
+        mutedIndicator.src = './svgicons/mic_off.svg';
+        mutedIndicator.alt = 'Muted';
+        mutedIndicator.className = 'w-6 h-6 ml-2 hidden';
+
+        const deafenedIndicator = document.createElement('img');
+        deafenedIndicator.id = 'deafened-indicator-' + user;
+        deafenedIndicator.src = './svgicons/media_output_off.svg';
+        deafenedIndicator.alt = 'Deafened';
+        deafenedIndicator.className = 'w-6 h-6 ml-2 hidden';
+
+        listItem.appendChild(mutedIndicator);
+        listItem.appendChild(deafenedIndicator);
         userList.appendChild(listItem);
     });
+}
+
+function updatePeerStatus(peerName, status) {
+    const mutedIndicator = document.getElementById('muted-indicator-' + peerName);
+    const deafenedIndicator = document.getElementById('deafened-indicator-' + peerName);
+    console.log(mutedIndicator, deafenedIndicator, status);
+    if (mutedIndicator) {
+        mutedIndicator.classList.add(status.muted ? 'inline-block' : 'hidden');
+        mutedIndicator.classList.remove(status.muted ? 'hidden' : 'inline-block');
+    }
+
+    if (deafenedIndicator) {
+        deafenedIndicator.classList.add(status.deafened ? 'inline-block' : 'hidden');
+        deafenedIndicator.classList.remove(status.deafened ? 'hidden' : 'inline-block');
+    }
 }
 
 
@@ -300,13 +336,23 @@ class Peer {
     }
 
     handleIncomingChat(data) {
-        debugLog(`Chat from ${this.peerName}:`, data.text);
+        debugLog(`Chat from ${this.peerName}: ` + data.text);
+        const message = data.text.trim();
+        const timestamp = new Date(data.timestamp).toLocaleTimeString();
+        if (message && message.length > 0) {
+            const messageItem = document.createElement('li');
+            messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px]';
+            messageItem.innerHTML = `<b>${this.peerName}:</b> ${message} <span class="text-[10px] text-gray-400">(${timestamp})</span>`;
+            textChatMessagesList.appendChild(messageItem);
+            textChatContainer.scrollTop = textChatContainer.scrollHeight;
+        }
     }
 
     handleIncomingStatus(data) {
-        debugLog(`Status update from ${this.peerName}:`, data);
+        debugLog(`Status update from ${this.peerName}:` + data.muted + ', ' + data.deafened);
         this.remoteStatus.muted = data.muted;
-        this.remoteStatus.deafened = data.deafened;                    
+        this.remoteStatus.deafened = data.deafened;
+        updatePeerStatus(this.peerName, this.remoteStatus);              
     }
     //Initialization
     async start() {
@@ -540,8 +586,8 @@ leaveRoomButton.addEventListener('click', () => {
     playSystemSound(goodByeAudio);
     for (const peerName in peerConnections) {
         peerConnections[peerName].stopVoiceDetection();
-        peerConnections[peerName].chatChannel.close();
-        peerConnections[peerName].statusChannel.close();
+        peerConnections[peerName].chatChannel?.close();
+        peerConnections[peerName].statusChannel?.close();
         peerConnections[peerName].pc.ontrack = null;
         peerConnections[peerName].pc.onicecandidate = null;
         peerConnections[peerName].pc.onconnectionstatechange = null;
@@ -567,6 +613,9 @@ muteMicButton.addEventListener('click', () => {
             ? '<img src="./svgicons/mic_off.svg" alt="Unmute Microphone">'
             : '<img src="./svgicons/mic.svg" alt="Mute Microphone">';
         playSystemSound(isMuted ? mutedAudio : unmutedAudio);
+        for (const peerName in peerConnections) {
+            peerConnections[peerName].sendStatusUpdate({ muted: isMuted, deafened: isDeafened });
+        }
     }
 });
 
@@ -582,7 +631,18 @@ deafenSelfButton.addEventListener('click', () => {
         ? '<img src="./svgicons/media_output_off.svg" alt="Un-deafen Self">'
         : '<img src="./svgicons/media_output.svg" alt="Deafen Self">';
     playSystemSound(isDeafened ? deafenedAudio : undeafenedAudio);
+    for (const peerName in peerConnections) {
+        peerConnections[peerName].sendStatusUpdate({ muted: isMuted, deafened: isDeafened });
+    }
 });
+
+textChatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault(); // Prevent default behavior if inside a form
+        textChatSendButton.click();   // Reuse your existing send button logic
+    }
+});
+
 
 screenShareButton.addEventListener('click', async () => {
     try {
@@ -618,6 +678,26 @@ screenShareButton.addEventListener('click', async () => {
     } catch (err) {
         alert('skyecord was unable to access your display for screen sharing. Check if your browser is requesting permissions or if you have it blocked.')
         console.error('Error accessing display media.', err);
+    }
+});
+
+textChatSendButton.addEventListener('click', () => {
+    const message = textChatInput.value.trim();
+    const timestamp = new Date().toLocaleTimeString();
+    if (message && message.length > 0) {
+        if (message.length > 500) {
+            alert('Message is too long. Please limit to 500 characters.');
+            return;
+        }
+        for (const peerName in peerConnections) {
+            peerConnections[peerName].sendChatMessage(message);
+        }
+        const messageItem = document.createElement('li');
+        messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px]';
+        messageItem.innerHTML = `<b>You:</b> ${message} <span class="text-[10px] text-gray-400">(${timestamp})</span>`;
+        textChatMessagesList.appendChild(messageItem);
+        textChatInput.value = '';
+        textChatContainer.scrollTop = textChatContainer.scrollHeight;
     }
 });
 
@@ -680,6 +760,7 @@ socket.addEventListener('message', async (event) => {
             peerConnections[data.from].receiveIceCandidate(data.candidate, data.from);
             break;
         case 'change_displayname':
+
             const peer = peerConnections[data.oldName];
             if(data.oldName === displayName) {
                 displayName = data.newName;
@@ -693,6 +774,9 @@ socket.addEventListener('message', async (event) => {
             url.searchParams.set('name', data.newName);
             window.history.replaceState({}, '', url);
             updateUserCountandList(data.users, data.numusers);
+            break;
+        case 'error':
+            console.error('Error from server:', data.message);
             break;
         default:
             console.log('Recieved message from server with unknown type: ' + data.type);

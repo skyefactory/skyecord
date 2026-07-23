@@ -294,6 +294,9 @@ async function createRoom(roomName) {
         const data = await response.json();
         if (data.success) {
             document.getElementById('room-id-display').textContent = data.roomId;
+            const roomSecret = crypto.getRandomValues(new Uint8Array(32));
+            const secretString = btoa(String.fromCharCode(...roomSecret));
+            document.getElementById('room-secret-display').textContent = secretString;
             newRoomForm.classList.add("hidden");
             joinForm.classList.add("hidden");
             setNewJoinVisibility(false);
@@ -323,6 +326,10 @@ async function createRoom(roomName) {
 
 document.getElementById('copy-room-id-btn').addEventListener('click', () => {
     copyText('copy-room-id-btn', 'room-id-display');
+});
+
+document.getElementById('copy-room-secret-btn').addEventListener('click', () => {
+    copyText('copy-room-secret-btn', 'room-secret-display');
 });
 
 document.getElementById('back-to-home-btn-new-room').addEventListener('click', goBackToHome);

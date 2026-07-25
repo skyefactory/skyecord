@@ -33,6 +33,60 @@ const textChatContainer = document.getElementById('text-chat-container');
 
 //Auth
 const sessionId = getStoredValue('session_id');
+var saltBytes;
+var secretString;
+var showedNoKeyError = false;
+
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('secret')) {
+    secretString = urlParams.get('secret');
+}
+
+var secretBytes;
+if(secretString){
+    secretString = secretString
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+
+    while (secretString.length % 4)
+        secretString += "=";
+
+    secretBytes = Uint8Array.from(
+        atob(secretString),
+        c => c.charCodeAt(0)
+    );
+}
+
+
+var ROOM_KEY = null;
+
+async function getRoomKey(secretBytes, saltBytes){
+    saltBytes = Uint8Array.from(Object.values(saltBytes));
+    const key = await crypto.subtle.importKey(
+        "raw",
+        secretBytes,
+        "HKDF",
+        false,
+        ["deriveKey"]);
+
+    return await crypto.subtle.deriveKey(
+        {
+            name: "HKDF",
+            hash: "SHA-256",
+            salt: saltBytes,
+            info: new TextEncoder().encode(
+                "skyecord-room-key"
+            )
+        },
+        key,
+        {
+            name: "AES-GCM",
+            length: 256
+        },
+        false,
+        ["encrypt", "decrypt"]
+    );
+}
 
 
 //WEBRTC
@@ -140,12 +194,9 @@ function updateUserCountandList(users, numusers) {
                 bindDialogControls(controlsInstance, '.self-controls-open', 'dialog', '.self-controls-close');
                 listItem.appendChild(controlsInstance);
                 const saveButton = controlsInstance.querySelector('.save-button-self-controls');
-                debugLog('Save button element:', saveButton);
                 if (saveButton) {
                     saveButton.addEventListener('click', () => {
-                        debugLog('Save button clicked. Updating nickname.');
                         const nicknameInput = controlsInstance.querySelector('.nickname-input');
-                        console.log('Nickname input value:', nicknameInput.value);
                         if (nicknameInput) {
                             const newNickname = nicknameInput.value.trim();
                             setStoredValue('nickname', newNickname);
@@ -175,6 +226,7 @@ function updateUserCountandList(users, numusers) {
         deafenedIndicator.src = './svgicons/media_output_off.svg';
         deafenedIndicator.alt = 'Deafened';
         deafenedIndicator.className = 'w-6 h-6 ml-2 hidden';
+        
 
         listItem.appendChild(mutedIndicator);
         listItem.appendChild(deafenedIndicator);
@@ -185,7 +237,6 @@ function updateUserCountandList(users, numusers) {
 function updatePeerStatus(peerName, status) {
     const mutedIndicator = document.getElementById('muted-indicator-' + peerName);
     const deafenedIndicator = document.getElementById('deafened-indicator-' + peerName);
-    console.log(mutedIndicator, deafenedIndicator, status);
     if (mutedIndicator) {
         mutedIndicator.classList.add(status.muted ? 'inline-block' : 'hidden');
         mutedIndicator.classList.remove(status.muted ? 'hidden' : 'inline-block');
@@ -213,6 +264,30 @@ async function updatePeers(users) {
 // Utility Functions
 
 
+async function encryptMessage(message, key) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt(
+        {
+            name: "AES-GCM",
+            iv: iv
+        },
+        key,
+        new TextEncoder().encode(message)
+    );
+    return {encrypted: new Uint8Array(encrypted), iv: iv};
+}
+
+async function decryptMessage(encrypted, iv, key) {
+    const decrypted = await crypto.subtle.decrypt(
+        {
+            name: "AES-GCM",
+            iv: iv
+        },
+        key,
+        encrypted
+    );
+    return new TextDecoder().decode(decrypted);
+}
 
 
 function isAudioOverThreshold(threshold, analyser){
@@ -296,7 +371,6 @@ class Peer {
             debugLog(` channel [${type}] with ${this.peerName} is OPEN`);
             // Example: Send initial local status once channel opens
             if (type === 'status') {
-                debugLog(`Sending initial status to ${this.peerName}: muted=${isMuted}, deafened=${isDeafened}`);
                 this.sendStatusUpdate({ muted: isMuted, deafened: isDeafened });
             }
         };
@@ -336,7 +410,6 @@ class Peer {
     }
 
     handleIncomingChat(data) {
-        debugLog(`Chat from ${this.peerName}: ` + data.text);
         const message = data.text.trim();
         const timestamp = new Date(data.timestamp).toLocaleTimeString();
         if (message && message.length > 0) {
@@ -349,7 +422,6 @@ class Peer {
     }
 
     handleIncomingStatus(data) {
-        debugLog(`Status update from ${this.peerName}:` + data.muted + ', ' + data.deafened);
         this.remoteStatus.muted = data.muted;
         this.remoteStatus.deafened = data.deafened;
         updatePeerStatus(this.peerName, this.remoteStatus);              
@@ -364,17 +436,10 @@ class Peer {
                 localMicrophoneStream = await navigator.mediaDevices.getUserMedia(constraints);
             }
 
-            console.log("Adding tracks:", localMicrophoneStream.getTracks());
-
             for (const track of localMicrophoneStream.getTracks()) {
                 this.pc.addTrack(track, localMicrophoneStream);
             }
 
-            console.log(
-                "Senders:",
-                this.pc.getSenders().map(s => s.track?.kind)
-            );
-            console.log(localMicrophoneStream.getAudioTracks()[0].getSettings());
         } catch (err) {
             alert('skyecord was unable to access your microphone. Check if your browser is requesting permissions or if you have it blocked.')
             console.error('Error accessing media devices.', err);
@@ -399,12 +464,6 @@ class Peer {
         }
 
         const trackType = track.kind;
-        console.log({
-            trackEnabled: track.enabled,
-            trackMuted: track.muted,
-            readyState: track.readyState,
-            streamTracks: stream.getTracks()
-        });
 
         if (trackType === 'audio') {
             this.remoteStreams.microphoneAudio = stream;
@@ -443,7 +502,6 @@ class Peer {
         }
 
         if (trackType === 'video') {
-            console.log(`Received video track from ${this.peerName}, but video is not currently supported.`);
             playSystemSound(startedVideoAudio);
         }
     }
@@ -464,13 +522,6 @@ class Peer {
             this.pc.close();
             delete peerConnections[this.peerName];
         }
-        console.log(
-            this.peerName,
-            "connection:",
-            this.pc.connectionState,
-            "ice:",
-            this.pc.iceConnectionState
-        );
     }
     async onNegotiationNeeded(){
         try {
@@ -518,13 +569,22 @@ class Peer {
     onSpeaking(){
         if(this.isSpeaking) return;
         this.isSpeaking = true;
-        console.log(this.peerName + ' is speaking');
+        // find the user in the user list and change color
+        const userListItem = document.getElementById('userlist-' + this.peerName);
+        if (userListItem) {
+            userListItem.classList.remove('bg-skye-gray-input');
+            userListItem.style.backgroundColor = '#22c55e';
+        }
     }
 
     onSilent(){
         if(!this.isSpeaking) return;
+        const userListItem = document.getElementById('userlist-' + this.peerName);
+        if (userListItem) {
+            userListItem.classList.add('bg-skye-gray-input');
+            userListItem.style.backgroundColor = '';
+        }
         this.isSpeaking = false;
-        console.log(this.peerName + ' is silent');
     }
 
     //Socket calls
@@ -534,10 +594,8 @@ class Peer {
             const offerCollision = description.type === 'offer' && !readyForOffer;
             this.ignoreOffer = !this.polite && offerCollision;
             if (this.ignoreOffer) {
-                console.log('Ignoring offer from ' + from + ' due to collision and being impolite.');
                 return;
             }
-            console.log('Replying to offer from ' + from);
             this.isSettingRemoteAnswerPending = description.type === 'answer';
             await this.pc.setRemoteDescription(description);
             this.isSettingRemoteAnswerPending = false;
@@ -681,7 +739,7 @@ screenShareButton.addEventListener('click', async () => {
     }
 });
 
-textChatSendButton.addEventListener('click', () => {
+textChatSendButton.addEventListener('click', async () => {
     const message = textChatInput.value.trim();
     const timestamp = new Date().toLocaleTimeString();
     if (message && message.length > 0) {
@@ -698,6 +756,23 @@ textChatSendButton.addEventListener('click', () => {
         textChatMessagesList.appendChild(messageItem);
         textChatInput.value = '';
         textChatContainer.scrollTop = textChatContainer.scrollHeight;
+
+        // Encrypt message and then send it to the server for logging
+        if (ROOM_KEY) {
+            await encryptMessage(message, ROOM_KEY).then(encryptedMessage => {
+                const logMessage = JSON.stringify({ type: 'log', message: encryptedMessage.encrypted, iv: encryptedMessage.iv, timestamp: Date.now(), roomId: roomId, sessionId: sessionId });
+                socket.send(logMessage);
+            }).catch(err => {
+                console.error('Error encrypting message for logging:', err);
+            });
+        } else {
+            console.warn('Room key is not available. Message will not be logged.');
+            if(!showedNoKeyError) {
+                alert('Room key is not available. Messages history is unavailable and your messages will not be logged. Please ensure you entered the correct secret key');
+                showedNoKeyError = true;
+            }
+            
+        }
     }
 });
 
@@ -706,13 +781,11 @@ textChatSendButton.addEventListener('click', () => {
 ********************************************************/
 
 socket.addEventListener('open', () => {
-    console.log('Connected to the signalling server');
     const nameRoomMessage = JSON.stringify({ type: 'join', name: displayName, roomId: roomId, sessionId: sessionId });
     socket.send(nameRoomMessage);
 });
 
 socket.addEventListener('close', (event) => {
-    console.log('Disconnected from the signalling server.' + event.reason);
     if (event.reason === 'Invalid room ID') {
         window.location.href = 'index.html?error=0';
     } else if (event.reason === 'Username already taken') {
@@ -737,8 +810,36 @@ socket.addEventListener('message', async (event) => {
 
     switch (data.type) {
         case 'joined':
+        
             document.getElementById('room-name').textContent = data.roomName;
             document.getElementById('room-id').textContent = roomId;
+            saltBytes = data.saltBytes;
+            if(secretBytes && saltBytes) {
+                ROOM_KEY = await getRoomKey(secretBytes, saltBytes);
+
+            } else {
+                console.warn('Secret or salt bytes are missing. Room key cannot be derived.');
+            }
+            const messagesLog = data.logs;
+            const messages = [];
+            if (messagesLog && messagesLog.length > 0) {
+                for (const logEntry of messagesLog) {
+                    const ciphertext = new Uint8Array(logEntry.ciphertext.data);
+                    const iv = new Uint8Array(logEntry.iv.data);
+                    const timestamp = new Date(logEntry.created).toLocaleTimeString();
+                    const plaintext = await decryptMessage(ciphertext, iv, ROOM_KEY);
+                    const username = logEntry.username;
+                    messages.push({ username, message: plaintext, timestamp });
+                }
+            }
+            // sort messages by timestamp
+            messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            for (const msg of messages) {
+                const messageItem = document.createElement('li');
+                messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px]';
+                messageItem.innerHTML = `<b>${msg.username}:</b> ${msg.message} <span class="text-[10px] text-gray-400">(${msg.timestamp})</span>`;
+                textChatMessagesList.appendChild(messageItem);
+            }
             updateUserCountandList(data.users, data.numusers);
             await updatePeers(data.users);
             break;
@@ -779,6 +880,6 @@ socket.addEventListener('message', async (event) => {
             console.error('Error from server:', data.message);
             break;
         default:
-            console.log('Recieved message from server with unknown type: ' + data.type);
+            console.warn('Recieved message from server with unknown type: ' + data.type);
     }
 });

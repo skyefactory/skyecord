@@ -9,13 +9,13 @@ const quickJoin = document.getElementById('quick-join');
 const joinForm = document.getElementById('join-form');
 const errorMsg = document.getElementById('error-msg');
 let errorMsgTimeoutId = null;
-
+let warnedUserNoSecret = false;
 const logonApi = 'https://auth.skyefactory.com/login';
 const verifySessionApi = 'https://auth.skyefactory.com/verify-session';
 const createRoomApi = 'https://auth.skyefactory.com/room';
 
 
-function copyText(buttonId, textId) {
+function copyText(buttonId, textId, buttonDefaultText = 'Copy Room ID') {
     const textElement = document.getElementById(textId);
     const textToCopy = textElement.textContent;
 
@@ -23,7 +23,7 @@ function copyText(buttonId, textId) {
         const button = document.getElementById(buttonId);
         button.textContent = 'Copied!';
         setTimeout(() => {
-            button.textContent = 'Copy Room ID';
+            button.textContent = buttonDefaultText;
         }, 2000);
     }).catch(err => {
         console.error('Failed to copy text: ', err);
@@ -248,16 +248,12 @@ async function loadFavorites() {
 
 function joinRoom(roomId) {
     const nickname = getStoredValue('nickname');
-    if (!nickname) {
-        joinForm.classList.remove("hidden");
-        document.getElementById('room-id').value = roomId;
-        newRoomForm.classList.add("hidden");
-        quickJoin.classList.add("hidden");
-        setNewJoinVisibility(false);
-        return;
-    }
-
-    window.location.href = `./room.html?name=${encodeURIComponent(nickname)}&roomId=${encodeURIComponent(roomId)}`;
+    joinForm.classList.remove("hidden");
+    document.getElementById('room-id').value = roomId;
+    document.getElementById('display-name').value = nickname || '';
+    newRoomForm.classList.add("hidden");
+    quickJoin.classList.add("hidden");
+    setNewJoinVisibility(false);
 }
 
 async function createRoom(roomName) {
@@ -295,7 +291,10 @@ async function createRoom(roomName) {
         if (data.success) {
             document.getElementById('room-id-display').textContent = data.roomId;
             const roomSecret = crypto.getRandomValues(new Uint8Array(32));
-            const secretString = btoa(String.fromCharCode(...roomSecret));
+            const secretString = btoa(String.fromCharCode(...roomSecret))
+                .replace(/\+/g, "-")
+                .replace(/\//g, "_")
+                .replace(/=+$/, "");
             document.getElementById('room-secret-display').textContent = secretString;
             newRoomForm.classList.add("hidden");
             joinForm.classList.add("hidden");
@@ -329,7 +328,7 @@ document.getElementById('copy-room-id-btn').addEventListener('click', () => {
 });
 
 document.getElementById('copy-room-secret-btn').addEventListener('click', () => {
-    copyText('copy-room-secret-btn', 'room-secret-display');
+    copyText('copy-room-secret-btn', 'room-secret-display', 'Copy Room Secret');
 });
 
 document.getElementById('back-to-home-btn-new-room').addEventListener('click', goBackToHome);
@@ -417,9 +416,21 @@ joinForm.addEventListener('submit', async (event) => {
         setErrorMessage('Please enter both a name and a room ID.');
         return;
     }
-
-    setStoredValue('nickname', displayName);
-    window.location.href = `./room.html?name=${encodeURIComponent(displayName)}&roomId=${encodeURIComponent(roomId)}`;
+    const roomSecret = document.getElementById('room-secret').value.trim();
+    if (!roomSecret) {
+        if (!warnedUserNoSecret) {
+            setErrorMessage('Warning: You are joining without a room secret. This may prevent you from joining the room.');
+            warnedUserNoSecret = true;
+            return;
+        }
+        else{
+            setStoredValue('nickname', displayName);
+            window.location.href = `./room.html?name=${encodeURIComponent(displayName)}&roomId=${encodeURIComponent(roomId)}`;
+        }
+    } else{
+        setStoredValue('nickname', displayName);
+        window.location.href = `./room.html?name=${encodeURIComponent(displayName)}&roomId=${encodeURIComponent(roomId)}&secret=${encodeURIComponent(roomSecret)}`;
+    }
 });
 
 window.addEventListener('DOMContentLoaded', async () => {

@@ -113,6 +113,7 @@ let isMuted = false;
 let isDeafened = false;
 let isScreenSharing = false;
 let numPeers = 0;
+let currentRoomUsers = new Set();
 const peerConnections = {};
 
 /******************************************************** 
@@ -169,6 +170,14 @@ function updateControlAvailability() {
 }
 
 function updateUserCountandList(users, numusers) {
+    const nextRoomUsers = new Set(users);
+    for (const user of currentRoomUsers) {
+        if (user !== displayName && !nextRoomUsers.has(user) && peerConnections[user]) {
+            peerConnections[user].teardown('user removed from room list');
+        }
+    }
+    currentRoomUsers = nextRoomUsers;
+
     if (numusers > numPeers + 1) {
         playSystemSound(joinedAudio);
     } else if (numusers < numPeers + 1) {
@@ -255,13 +264,17 @@ function updatePeerStatus(peerName, status) {
 // Peer management Functions
 
 async function updatePeers(users) {
+    const peersToStart = [];
+
     for (const user of users) {
         if (user !== displayName && !peerConnections[user]) {
             const peer = new Peer(user);
             peerConnections[user] = peer;
-            await peer.start();
+            peersToStart.push(peer);
         }
     }
+
+    await Promise.allSettled(peersToStart.map(peer => peer.start()));
 }
 
 // Utility Functions
@@ -349,6 +362,7 @@ class Peer {
 
         this.pendingRemoteTracks = []; // tracks received before their metadata arrives
         this.pendingTrackInfos = []; // track-info messages received before the track arrives
+        this.isTornDown = false;
     }
 
     setupDataChannels() {
@@ -514,6 +528,63 @@ class Peer {
 
     }
 
+    teardown(reason = 'peer disconnected') {
+        if (this.isTornDown) {
+            return;
+        }
+        this.isTornDown = true;
+
+        debugLog(`Tearing down peer ${this.peerName}: ${reason}`);
+        this.stopVoiceDetection();
+
+        if (this.chatChannel) {
+            this.chatChannel.onopen = null;
+            this.chatChannel.onclose = null;
+            this.chatChannel.onmessage = null;
+            this.chatChannel.onerror = null;
+            if (this.chatChannel.readyState === 'open' || this.chatChannel.readyState === 'connecting') {
+                this.chatChannel.close();
+            }
+            this.chatChannel = null;
+        }
+
+        if (this.statusChannel) {
+            this.statusChannel.onopen = null;
+            this.statusChannel.onclose = null;
+            this.statusChannel.onmessage = null;
+            this.statusChannel.onerror = null;
+            if (this.statusChannel.readyState === 'open' || this.statusChannel.readyState === 'connecting') {
+                this.statusChannel.close();
+            }
+            this.statusChannel = null;
+        }
+
+        this.pc.ontrack = null;
+        this.pc.onicecandidate = null;
+        this.pc.onconnectionstatechange = null;
+        this.pc.onnegotiationneeded = null;
+        this.pc.ondatachannel = null;
+
+        const audioElement = document.getElementById(`audio-${this.peerName}`);
+        if (audioElement) {
+            audioElement.pause();
+            audioElement.srcObject = null;
+            audioElement.remove();
+        }
+
+        this.pendingRemoteTracks = [];
+        this.pendingTrackInfos = [];
+        this.iceCandidateQueue = [];
+
+        if (this.pc.signalingState !== 'closed') {
+            this.pc.close();
+        }
+
+        if (peerConnections[this.peerName] === this) {
+            delete peerConnections[this.peerName];
+        }
+    }
+
     onTrack(event) {
         const { track, streams } = event;
         if(!track){
@@ -546,14 +617,7 @@ class Peer {
     }
     onConnectionStateChange(){
         if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed' || this.pc.connectionState === 'closed') {
-            const audioElement = document.getElementById(`audio-${this.peerName}`);
-            if (audioElement) {
-                audioElement.srcObject = null;
-                audioElement.remove();
-            }
-            this.stopVoiceDetection();
-            this.pc.close();
-            delete peerConnections[this.peerName];
+            this.teardown(`pc ${this.pc.connectionState}`);
         }
     }
     async onNegotiationNeeded(){
@@ -676,20 +740,7 @@ class Peer {
 leaveRoomButton.addEventListener('click', () => {
     playSystemSound(goodByeAudio);
     for (const peerName in peerConnections) {
-        peerConnections[peerName].stopVoiceDetection();
-        peerConnections[peerName].chatChannel?.close();
-        peerConnections[peerName].statusChannel?.close();
-        peerConnections[peerName].pc.ontrack = null;
-        peerConnections[peerName].pc.onicecandidate = null;
-        peerConnections[peerName].pc.onconnectionstatechange = null;
-        peerConnections[peerName].pc.onnegotiationneeded = null;
-        peerConnections[peerName].pc.ondatachannel = null;
-        const audioElement = document.getElementById(`audio-${peerName}`);
-        if (audioElement) {
-            audioElement.srcObject = null;
-            audioElement.remove();
-        }
-        peerConnections[peerName].pc.close();
+        peerConnections[peerName].teardown('local leave');
     }
     socket.close(1000, 'User left the room');
 });

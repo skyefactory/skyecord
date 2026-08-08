@@ -1,6 +1,6 @@
 {
   "name": "skyecord",
-  "version": "0.0.25",
+  "version": "0.0.26",
   "description": "skyecord app (LGBT+ ONLY)",
   "main": "main.js",
   "scripts": {
@@ -23,7 +23,10 @@
     "@electron-forge/plugin-fuses": "^7.11.2",
     "@electron-forge/publisher-github": "^7.11.2",
     "@electron/fuses": "^1.8.0",
-    "electron": "^43.1.1"
+    "@eslint/js": "^10.0.1",
+    "electron": "^43.1.1",
+    "eslint": "^10.8.0",
+    "globals": "^17.9.0"
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.3.3",

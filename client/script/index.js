@@ -1,6 +1,23 @@
-import {isRunningInElectron, getStoredValue, setStoredValue, sendDebugLogs, debugLog} from './common.js';
+import {debugLog} from './debugLogger.js';
 
-debugLog('isRunningInElectron: ' + isRunningInElectron);
+/*
+ * retrieves the value associated with the given key from localStorage.
+ *      params:
+ *          key - The key whose value is to be retrieved.
+ */
+export function getStoredValue(key) {
+    return localStorage.getItem(key) ?? '';
+}
+
+/*
+ * sets the value associated with the given key in localStorage.
+ *      params:
+ *          key - The key whose value is to be set.
+ *          value - The value to be set for the given key.
+ */
+export function setStoredValue(key, value) {
+    localStorage.setItem(key, value);
+}
 
 const logonForm = document.getElementById('login-form');
 const newRoomForm = document.getElementById('new-room-form');

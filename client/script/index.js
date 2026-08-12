@@ -1,5 +1,3 @@
-import {debugLog} from './debugLogger.js';
-
 /*
  * retrieves the value associated with the given key from localStorage.
  *      params:
@@ -25,6 +23,7 @@ const newJoinForm = document.getElementById('new-join-form');
 const quickJoin = document.getElementById('quick-join');
 const joinForm = document.getElementById('join-form');
 const errorMsg = document.getElementById('error-msg');
+const roomDeletedSFX = '../audio/deleted.wav';
 let errorMsgTimeoutId = null;
 let warnedUserNoSecret = false;
 const logonApi = 'https://auth.skyefactory.com/login';
@@ -96,6 +95,7 @@ function setNewJoinVisibility(isVisible) {
 }
 
 function goBackToHome() {
+    setErrorMessage('');
     newRoomForm.classList.add("hidden");
     joinForm.classList.add("hidden");
     document.getElementById('room-created-screen').classList.add("hidden");
@@ -163,6 +163,8 @@ function createDeleteRoomControls(ownRoom, sessionId) {
         if (deleteResponse.ok) {
             const deleteData = await deleteResponse.json();
             if (deleteData.success) {
+                const audio = new Audio(roomDeletedSFX);
+                audio.play();
                 setErrorMessage('Room deleted successfully.');
                 dialog.close();
                 loadFavorites();
@@ -193,7 +195,7 @@ function createJoinButton(roomId) {
     joinButton.className = 'p-1.5 text-[12px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover';
     joinButton.textContent = 'Join';
     joinButton.addEventListener('click', () => {
-        joinRoom(roomId);
+        (roomId);
     });
     return joinButton;
 }
@@ -353,12 +355,14 @@ document.getElementById('back-to-home-btn-join').addEventListener('click', goBac
 document.getElementById('back-to-home-btn-created').addEventListener('click', goBackToHome);
 
 newRoomForm.addEventListener('submit', async (event) => {
+    setErrorMessage('');
     event.preventDefault();
     const roomName = document.getElementById('room-name').value.trim();
     await createRoom(roomName);
 });
 
 logonForm.addEventListener('submit', async (event) => {
+    setErrorMessage('');
     event.preventDefault();
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value.trim();
@@ -395,6 +399,7 @@ logonForm.addEventListener('submit', async (event) => {
 });
 
 document.getElementById('create-room-btn').addEventListener('click', async (event) => {
+    setErrorMessage('');
     event.preventDefault();
     if (!await isAuthenticated()) {
         setErrorMessage('You must be logged in to create a room.');
@@ -408,6 +413,7 @@ document.getElementById('create-room-btn').addEventListener('click', async (even
 });
 
 document.getElementById('join-room-btn').addEventListener('click', async (event) => {
+    setErrorMessage('');
     event.preventDefault();
     if (!await isAuthenticated()) {
         setErrorMessage('You must be logged in to join a room.');
@@ -420,7 +426,16 @@ document.getElementById('join-room-btn').addEventListener('click', async (event)
     joinForm.classList.remove("hidden");
 });
 
+document.getElementById('modify-account-btn').addEventListener('click', async (event) => {
+    setErrorMessage('');
+    event.preventDefault();
+    setErrorMessage('I haven\'t finished this yet :P');
+    return;
+});
+
+
 joinForm.addEventListener('submit', async (event) => {
+    setErrorMessage('');
     event.preventDefault();
     if (!await isAuthenticated()) {
         setErrorMessage('You must be logged in to join a room.');

@@ -9,7 +9,6 @@
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
     --color-red-500: oklch(63.7% 0.237 25.331);
-    --color-green-500: oklch(72.3% 0.219 149.579);
     --color-gray-300: oklch(87.2% 0.01 258.338);
     --color-gray-400: oklch(70.7% 0.022 261.325);
     --color-gray-500: oklch(55.1% 0.027 264.364);
@@ -254,6 +253,9 @@
   .h-\[40vh\] {
     height: 40vh;
   }
+  .h-auto {
+    height: auto;
+  }
   .h-screen {
     height: 100vh;
   }
@@ -272,6 +274,9 @@
   .w-6 {
     width: calc(var(--spacing) * 6);
   }
+  .w-24 {
+    width: calc(var(--spacing) * 24);
+  }
   .w-\[75\%\] {
     width: 75%;
   }
@@ -281,8 +286,14 @@
   .w-full {
     width: 100%;
   }
+  .max-w-full {
+    max-width: 100%;
+  }
   .max-w-xl {
     max-width: var(--container-xl);
+  }
+  .min-w-0 {
+    min-width: 0px;
   }
   .flex-1 {
     flex: 1;
@@ -319,6 +330,9 @@
   }
   .overflow-x-auto {
     overflow-x: auto;
+  }
+  .overflow-x-hidden {
+    overflow-x: hidden;
   }
   .overflow-y-auto {
     overflow-y: auto;
@@ -427,6 +441,9 @@
   .text-\[16px\] {
     font-size: 16px;
   }
+  .text-\[18px\] {
+    font-size: 18px;
+  }
   .font-bold {
     --tw-font-weight: var(--font-weight-bold);
     font-weight: var(--font-weight-bold);
@@ -439,11 +456,17 @@
     --tw-tracking: var(--tracking-wide);
     letter-spacing: var(--tracking-wide);
   }
+  .break-words {
+    overflow-wrap: break-word;
+  }
+  .whitespace-normal {
+    white-space: normal;
+  }
   .text-\[\#f2f3f5\] {
     color: #f2f3f5;
   }
-  .text-\[rgb\(148\,2\,2\)\] {
-    color: rgb(148,2,2);
+  .text-\[rgb\(255\,2\,2\)\] {
+    color: rgb(255,2,2);
   }
   .text-gray-400 {
     color: var(--color-gray-400);

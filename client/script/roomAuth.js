@@ -73,20 +73,37 @@ export async function deriveKey(secretBytes, saltBytes){
 }
 
 export async function encryptMessage(message, key = ROOM_KEY) {
+    const data = new TextEncoder().encode(message);
+
+    return encryptData(data, key);
+}
+
+export async function decryptMessage(encrypted, iv, key = ROOM_KEY) {
+    const decrypted = await decryptData(encrypted, iv, key);
+
+    return new TextDecoder().decode(decrypted);
+}
+
+export async function encryptData(data, key = ROOM_KEY) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
+
     const encrypted = await crypto.subtle.encrypt(
         {
             name: "AES-GCM",
             iv: iv
         },
         key,
-        new TextEncoder().encode(message)
+        data
     );
-    return {encrypted: new Uint8Array(encrypted), iv: iv};
+
+    return {
+        encrypted: new Uint8Array(encrypted),
+        iv: iv
+    };
 }
 
-export async function decryptMessage(encrypted, iv, key = ROOM_KEY) {
-    const decrypted = await crypto.subtle.decrypt(
+export async function decryptData(encrypted, iv, key = ROOM_KEY) {
+    return await crypto.subtle.decrypt(
         {
             name: "AES-GCM",
             iv: iv
@@ -94,5 +111,4 @@ export async function decryptMessage(encrypted, iv, key = ROOM_KEY) {
         key,
         encrypted
     );
-    return new TextDecoder().decode(decrypted);
 }

@@ -22,14 +22,61 @@ const textChatSendButton = document.getElementById('text-chat-send');
 const textChatMessagesList = document.getElementById('text-chat-messages');
 const textChatContainer = document.getElementById('text-chat-container');
 
+
+
+function getChatUserColor(username) {
+    let hash = 0;
+    for (let index = 0; index < username.length; index += 1) {
+        hash = ((hash << 5) - hash) + username.charCodeAt(index);
+        hash |= 0;
+    }
+
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue} 85% 72%)`;
+}
+
+function createChatMessageItem(sender, message, timestamp, colorKey = sender) {
+    const messageItem = document.createElement('li');
+
+    messageItem.className =
+        'p-1 bg-skye-gray-input text-white text-[12px] min-w-0 max-w-full overflow-hidden';
+
+    const senderLabel = document.createElement('b');
+    senderLabel.textContent = `${sender}:`;
+    senderLabel.style.color = getChatUserColor(colorKey);
+
+    const messageBody = document.createElement('span');
+
+    messageBody.style.overflowWrap = 'anywhere';
+    messageBody.style.wordBreak = 'break-word';
+    messageBody.style.whiteSpace = 'normal';
+
+    messageBody.textContent = ` ${message} `;
+
+    const timestampLabel = document.createElement('span');
+    timestampLabel.className = 'text-[10px] text-gray-400';
+    timestampLabel.textContent = `(${timestamp})`;
+
+    messageItem.append(senderLabel, messageBody, timestampLabel);
+
+    styleChatMessageItem(messageItem);
+
+    return messageItem;
+}
+
+function styleChatMessageItem(messageItem) {
+    messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px] break-words whitespace-normal min-w-0';
+    messageItem.querySelectorAll('img').forEach((image) => {
+        image.classList.add('max-w-full', 'h-auto', 'block');
+    });
+}
+
 export function loadMessages(messages){
     messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     for (const msg of messages) {
-        const messageItem = document.createElement('li');
-        messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px]';
-        messageItem.innerHTML = `<b>${msg.username}:</b> ${msg.message} <span class="text-[10px] text-gray-400">(${msg.timestamp})</span>`;
-        textChatMessagesList.appendChild(messageItem);
+        textChatMessagesList.appendChild(createChatMessageItem(msg.username, msg.message, msg.timestamp));
     }
+    textChatContainer.scrollTop = textChatContainer.scrollHeight;
 }
 
 export function updateRoomNameID(roomname, roomid){
@@ -179,6 +226,19 @@ export function updateUserList(users, numusers){
         } else {
             listItem.className = 'p-1 bg-skye-gray-input text-white w-[75%]';
             listItem.textContent = user;
+            const volumeSlider = document.createElement('input');
+            volumeSlider.type = 'range';
+            volumeSlider.min = '0';
+            volumeSlider.max = '100';
+            volumeSlider.value = '100';
+            volumeSlider.className = 'w-24 ml-2';
+            volumeSlider.addEventListener('input', (event) => {
+                const audioElement = document.getElementById('audio-' + user);
+                if (audioElement) {
+                    audioElement.volume = event.target.value / 100;
+                }
+            });
+            listItem.appendChild(volumeSlider);
         }
         const mutedIndicator = document.createElement('img');
         mutedIndicator.id = 'muted-indicator-' + user;
@@ -191,7 +251,9 @@ export function updateUserList(users, numusers){
         deafenedIndicator.src = './svgicons/media_output_off.svg';
         deafenedIndicator.alt = 'Deafened';
         deafenedIndicator.className = 'w-6 h-6 ml-2 hidden';
-        
+
+
+
 
         listItem.appendChild(mutedIndicator);
         listItem.appendChild(deafenedIndicator);
@@ -222,10 +284,7 @@ export function updatePeerStatus(peerName, status) {
 
 export function handleNewMessage(sender, message,timestamp){
     if (message && message.length > 0) {
-        const messageItem = document.createElement('li');
-        messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px]';
-        messageItem.innerHTML = `<b>${sender}:</b> ${message} <span class="text-[10px] text-gray-400">(${timestamp})</span>`;
-        textChatMessagesList.appendChild(messageItem);
+        textChatMessagesList.appendChild(createChatMessageItem(sender, message, timestamp));
         textChatContainer.scrollTop = textChatContainer.scrollHeight;
     }
 }
@@ -252,8 +311,22 @@ muteMicButton.addEventListener('click', () => {
         for (const peerName in localState.peerConnections) {
             localState.peerConnections[peerName].sendStatusUpdate({ muted: localState.isMuted, deafened: localState.isDeafened });
         }
+        updateLocalStatusIndicators();
     }
 });
+
+function updateLocalStatusIndicators(){
+    const mutedIndicator = document.getElementById('muted-indicator-' + localState.displayName);
+    if (mutedIndicator) {
+        mutedIndicator.classList.add(localState.isMuted ? 'inline-block' : 'hidden');
+        mutedIndicator.classList.remove(localState.isMuted ? 'hidden' : 'inline-block');
+    }
+    const deafenedIndicator = document.getElementById('deafened-indicator-' + localState.displayName);
+    if (deafenedIndicator) {
+        deafenedIndicator.classList.add(localState.isDeafened ? 'inline-block' : 'hidden');
+        deafenedIndicator.classList.remove(localState.isDeafened ? 'hidden' : 'inline-block');
+    }
+}
 
 deafenButton.addEventListener('click', () => {
     localState.isDeafened = !localState.isDeafened;
@@ -270,6 +343,7 @@ deafenButton.addEventListener('click', () => {
     for (const peerName in localState.peerConnections) {
         localState.peerConnections[peerName].sendStatusUpdate({ muted: localState.isMuted, deafened: localState.isDeafened });
     }
+    updateLocalStatusIndicators();
 });
 
 
@@ -291,10 +365,7 @@ textChatSendButton.addEventListener('click', async () => {
         for (const peerName in localState.peerConnections) {
             localState.peerConnections[peerName].sendChatMessage(message);
         }
-        const messageItem = document.createElement('li');
-        messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px]';
-        messageItem.innerHTML = `<b>You:</b> ${message} <span class="text-[10px] text-gray-400">(${timestamp})</span>`;
-        textChatMessagesList.appendChild(messageItem);
+        textChatMessagesList.appendChild(createChatMessageItem('You', message, timestamp, localState.displayName));
         textChatInput.value = '';
         textChatContainer.scrollTop = textChatContainer.scrollHeight;
 

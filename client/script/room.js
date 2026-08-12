@@ -1,5 +1,5 @@
 import {debugLog} from './debugLogger.js';
-import {isElectron, localState} from './roomMisc.js';
+import {isElectron, localState, stopVoiceDetectionLocal, startVoiceDetectionLocal, localOnSpeaking, localOnSilent} from './roomMisc.js';
 import {updateRoomNameID, loadMessages, updateUserList} from './roomUi.js';
 import {initializeRoomKey, decryptMessage} from './roomAuth.js'; 
 import {updatePeers} from './roomPeer.js';   
@@ -21,6 +21,7 @@ localState.socket.addEventListener('open',() =>{
 
 localState.socket.addEventListener('close', () => {
     window.location.href = '/';
+    stopVoiceDetectionLocal();
     debugLog('info', 'WebSocket connection closed, redirecting to home page');
 });
 
@@ -53,6 +54,7 @@ localState.socket.addEventListener('message', async (event) => {
             loadMessages(messages);
             updateUserList(data.users, data.numusers);
             await updatePeers(data.users);
+            startVoiceDetectionLocal(localState.localMicrophoneStream, localOnSpeaking, localOnSilent);
             break;
         }
         case 'user_change':

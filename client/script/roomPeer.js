@@ -39,7 +39,7 @@ class Peer {
         this.setupPeerConnectionEvents();
         this.setupDataChannels();
 
-        this.pendingRemotehands = []; // tracks received before their metadata arrives
+        this.pendingRemoteTracks = []; // tracks received before their metadata arrives
         this.pendingTrackInfos = []; // track-info messages received before the track arrives
         this.isTornDown = false;
     }

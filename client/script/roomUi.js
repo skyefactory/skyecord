@@ -1,6 +1,7 @@
 import {debugLog} from './debugLogger.js';
-import {localState, setStoredValue} from './roomMisc.js';
+import {localState, setStoredValue, isElectron} from './roomMisc.js';
 import {ROOM_KEY, encryptMessage} from './roomAuth.js';
+import {startWindowShare, selectWindowSourceUI} from './roomScreenShare.js';
 const applicationAudio = {
     joined: '../audio/joined.wav',
     left: '../audio/left.wav',
@@ -382,5 +383,20 @@ textChatSendButton.addEventListener('click', async () => {
         }
     }
 });
+
+screenShareButton.addEventListener('click', async () => {
+    if (!isElectron()) {
+        alert('Screen sharing is only available in the app.');
+        return;
+    }
+    try {
+        const chosenSource = await selectWindowSourceUI();
+        
+        await startWindowShare(chosenSource);
+    } catch (err) {
+        console.log(err.message);
+    }
+});
+
 bindDialogControls(document.getElementById('self-controls'), '.self-controls-open', 'dialog', '.self-controls-close');
 bindDialogControls(document.getElementById('other-controls'), '.other-controls-open', 'dialog', '.other-controls-close');

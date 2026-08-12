@@ -1,6 +1,5 @@
 import {localState} from './roomMisc.js';
-import {screenShareButton} from './roomUi.js';
-async function startWindowShare(windowSource){
+export async function startWindowShare(windowSource){
     try{
         window.electronScreenShare.setTargetSource(windowSource.id);
         const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -32,7 +31,7 @@ async function startWindowShare(windowSource){
 }
 
 
-function selectWindowSourceUI() {
+export function selectWindowSourceUI() {
   return new Promise((resolve, reject) => {
     const modal = document.getElementById('screen-picker-modal');
     const grid = document.getElementById('picker-sources-grid');
@@ -77,12 +76,3 @@ function selectWindowSourceUI() {
   });
 }
 
-screenShareButton.addEventListener('click', async () => {
-    try {
-        const chosenSource = await selectWindowSourceUI();
-        
-        await startWindowShare(chosenSource);
-    } catch (err) {
-        console.log(err.message);
-    }
-});

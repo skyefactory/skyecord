@@ -1,5 +1,5 @@
 import {debugLog} from './debugLogger.js';
-import {isElectron, localState, stopVoiceDetectionLocal, startVoiceDetectionLocal, localOnSpeaking, localOnSilent} from './roomMisc.js';
+import {isElectron, localState, stopVoiceDetectionLocal} from './roomMisc.js';
 import {updateRoomNameID, loadMessages, updateUserList} from './roomUi.js';
 import {initializeRoomKey, decryptMessage} from './roomAuth.js'; 
 import {updatePeers} from './roomPeer.js';   
@@ -54,7 +54,6 @@ localState.socket.addEventListener('message', async (event) => {
             loadMessages(messages);
             updateUserList(data.users, data.numusers);
             await updatePeers(data.users);
-            startVoiceDetectionLocal(localState.localMicrophoneStream, localOnSpeaking, localOnSilent);
             break;
         }
         case 'user_change':

@@ -1,4 +1,4 @@
-import {localState, isAudioSilent} from './roomMisc.js';
+import {localState, isAudioSilent, startVoiceDetectionLocal, localOnSilent, localOnSpeaking} from './roomMisc.js';
 import {debugLog} from './debugLogger.js';
 import {handleNewMessage, updatePeerStatus} from './roomUi.js';
 const configuration = {
@@ -133,6 +133,7 @@ class Peer {
                 this.pc.addTrack(track, localState.localMicrophoneStream);
                 localState.socket.send(JSON.stringify({type: 'track-info' , track: track, stream: localState.localMicrophoneStream, roomId: localState.roomId, trackId: track.id, trackType: `microphoneAudio`, target: this.peerName}));
             }
+            startVoiceDetectionLocal(localState.localMicrophoneStream, localOnSpeaking, localOnSilent);
 
         } catch (err) {
             alert('App was unable to access your microphone. Check if your browser is requesting permissions or if you have it blocked.')

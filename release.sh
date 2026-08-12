@@ -22,6 +22,10 @@ NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
 
 echo "New version: $NEW_VERSION"
 
+RELEASE_DATE=$(date +%F)
+
+echo "Release date: $RELEASE_DATE"
+
 # Update package.json without npm version
 node <<EOF
 const fs = require("fs");
@@ -41,15 +45,17 @@ if [[ -f "$CLIENT_FILE" ]]; then
     echo "Updating client version display..."
 
     sed -i -E "s/version [0-9]+\.[0-9]+\.[0-9]+/version $NEW_VERSION/g" "$CLIENT_FILE"
+    sed -i -E "s/last updated: [0-9]{4}-[0-9]{2}-[0-9]{2}/last updated: $RELEASE_DATE/g" "$CLIENT_FILE"
 
     echo "Updated $CLIENT_FILE:"
     grep "version" "$CLIENT_FILE"
+    grep "last updated" "$CLIENT_FILE"
 else
     echo "Warning: $CLIENT_FILE not found, skipping client version update"
 fi
 
 # Verify change
-git diff package.json
+git diff package.json "$CLIENT_FILE"
 
 # Create commit
 git add -A

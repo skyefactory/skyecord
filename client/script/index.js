@@ -195,7 +195,7 @@ function createJoinButton(roomId) {
     joinButton.className = 'p-1.5 text-[12px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover';
     joinButton.textContent = 'Join';
     joinButton.addEventListener('click', () => {
-        (roomId);
+        joinRoom(roomId);
     });
     return joinButton;
 }

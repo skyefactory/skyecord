@@ -116,3 +116,4 @@ localState.socket.addEventListener('message', async (event) => {
             debugLog('warn', 'Recieved message from server with unknown type: ' + data.type);
     }
 });
+

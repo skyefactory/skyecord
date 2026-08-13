@@ -385,7 +385,7 @@ textChatSendButton.addEventListener('click', async () => {
 });
 
 screenShareButton.addEventListener('click', async () => {
-    if (!isElectron()) {
+    if (!isElectron) {
         alert('Screen sharing is only available in the app.');
         return;
     }

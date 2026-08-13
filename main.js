@@ -22,7 +22,7 @@ ipcMain.on('set-selected-source', (event, id) => {
 const createWindow = () => {
     const win = new BrowserWindow({
         width: 1280,
-        height: 720,
+        height: 1280,
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
             nodeIntegration: false,

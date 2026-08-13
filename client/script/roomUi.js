@@ -3,14 +3,14 @@ import {localState, setStoredValue, isElectron} from './roomMisc.js';
 import {ROOM_KEY, encryptMessage} from './roomAuth.js';
 import {startWindowShare, selectWindowSourceUI, displayPeerScreenShare, stopWindowShare} from './roomScreenShare.js';
 const applicationAudio = {
-    joined: '../audio/joined.wav',
-    left: '../audio/left.wav',
-    startedVideo: '../audio/started-video.wav',
-    goodbye: '../audio/goodbye.wav',
-    muted: '../audio/muted.wav',
-    deafened: '../audio/deafened.wav',
-    unmuted: '../audio/unmuted.wav',
-    undeafened: '../audio/undeafened.wav',
+    joined: isElectron() ? './audio/joined.wav' : '../audio/joined.wav',
+    left: isElectron() ? './audio/left.wav' : '../audio/left.wav',
+    startedVideo: isElectron() ? './audio/started-video.wav' : '../audio/started-video.wav',
+    goodbye: isElectron() ? './audio/goodbye.wav' : '../audio/goodbye.wav',
+    muted: isElectron() ? './audio/muted.wav' : '../audio/muted.wav',
+    deafened: isElectron() ? './audio/deafened.wav' : '../audio/deafened.wav',
+    unmuted: isElectron() ? './audio/unmuted.wav' : '../audio/unmuted.wav',
+    undeafened: isElectron() ? './audio/undeafened.wav' : '../audio/undeafened.wav',
 }
 
 const muteMicButton = document.getElementById('mute-mic');

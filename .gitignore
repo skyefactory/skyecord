@@ -16,3 +16,5 @@ release.sh
 *.gpg
 *.mjs
 jsconfig.json
+release.sh
+todo.md

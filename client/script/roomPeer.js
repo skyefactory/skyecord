@@ -518,6 +518,7 @@ export async function updatePeers(users) {
 
     // If we are currently screensharing, we need to add the screen share tracks to the new peer connections
     if(localState.isScreenSharing && localState.localScreenVideoStream){
+        debugLog('info', "Adding screen share tracks to new peer connections");
         for (const peerName in localState.peerConnections) {
             if(localState.localScreenAudioStream){
                 const screenAudioSender = localState.peerConnections[peerName].pc.addTrack(localState.localScreenAudioStream);

@@ -11,6 +11,7 @@ const constraints = {
     video: false
 };
 
+
 class PeerStreams{
     constructor() {
         this.microphoneAudio = null; // This is the remote microphone audio track from the peer

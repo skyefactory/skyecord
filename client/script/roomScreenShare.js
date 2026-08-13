@@ -26,7 +26,7 @@ export async function startWindowShare(windowSource){
                 localState.peerConnections[peerName].pc.addTrack(screenTrack);
                 localState.socket.send(JSON.stringify({type: 'track-info' , track: screenTrack, stream: stream, roomId: localState.roomId, trackId: screenTrack.id, trackType: `screenShareVideo`, target: peerName}));
             }
-            localState.peerConnections[peerName].sendStatusUpdate()
+            localState.peerConnections[peerName].sendStatusUpdate({muted: localState.isMuted, deafened: localState.isDeafened, screenSharing: localState.isScreenSharing});
         }
     }
     catch(err){
@@ -102,7 +102,10 @@ export function displayPeerScreenShare(peerName, videoStream, audioStream) {
   if (audioStream) {
     audioElement.srcObject = audioStream;
   }
-
+  console.log(`Displaying screen share from ${peerName}`);
+  console.log('Video Stream:', videoStream);
+  console.log('Audio Stream:', audioStream);
+  console.log('remoteStreams:', localState.peerConnections[peerName].remoteStreams);
   modal.classList.remove('hidden');
   modal.classList.add('flex');
 

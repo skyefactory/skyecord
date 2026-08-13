@@ -257,10 +257,10 @@ export function updateUserList(users, numusers){
         screenShareWatchBtn.textContent = 'Watch Screen';
         screenShareWatchBtn.className = 'hidden ml-2 px-2 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-150';
         screenShareWatchBtn.addEventListener('click', () => {
-            displayPeerScreenShare(user, localState.peerConnections[user].remoteStreams.screenShareStream, localState.peerConnections[user].remoteStreams.screenShareAudioStream);
+            displayPeerScreenShare(user, localState.peerConnections[user].remoteStreams.screenVideo, localState.peerConnections[user].remoteStreams.screenAudio);
         });
 
-
+        listItem.appendChild(screenShareWatchBtn);
         listItem.appendChild(mutedIndicator);
         listItem.appendChild(deafenedIndicator);
         userList.appendChild(listItem);

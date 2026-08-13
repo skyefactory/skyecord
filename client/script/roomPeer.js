@@ -69,13 +69,13 @@ class Peer {
                 this.remoteStreams.screenAudio = null;
                 debugLog('info', "Removed screen share audio track from peer " + this.peerName);
                 debugLog('info', "screenAudioSender: ", this.screenAudioSender);
-                this.pc.removeTrack(this.screenAudioSender);
+                if(this.screenAudioSender){this.pc.removeTrack(this.screenAudioSender);}
                 break;
             case 'screenShareVideo':
                 this.remoteStreams.screenVideo = null;
                 debugLog('info', "Removed screen share video track from peer " + this.peerName);
                 debugLog('info', "screenVideoSender: ", this.screenVideoSender);
-                this.pc.removeTrack(this.screenVideoSender);
+                if(this.screenVideoSender){this.pc.removeTrack(this.screenVideoSender);}
                 updatePeerScreenShareButton(this.peerName, false);
                 break;
         }
@@ -519,20 +519,18 @@ export async function updatePeers(users) {
     await Promise.allSettled(peersToStart.map(peer => peer.start()));
 
     // If we are currently screensharing, we need to add the screen share tracks to the new peer connections
-    if(localState.isScreenSharing && localState.localScreenVideoStream){
+    if(localState.isScreenSharing && localState.localScreenVideoStream && peersToStart.length > 0) {
         debugLog('info', "Adding screen share tracks to new peer connections");
-        for (const peerName in localState.peerConnections) {
-            if(localState.localScreenAudioStream){
-                const screenAudioSender = localState.peerConnections[peerName].pc.addTrack(localState.localScreenAudioStream);
-                localState.peerConnections[peerName].screenAudioSender = screenAudioSender;
-                localState.socket.send(JSON.stringify({type: 'track-info' , track: localState.localScreenAudioStream, stream: localState.localScreenAudioStream, roomId: localState.roomId, trackId: localState.localScreenAudioStream.id, trackType: `screenShareAudio`, target: peerName}));
+        if(localState.localScreenAudioStream && localState.localScreenVideoStream){
+            for (const peer of peersToStart) {
+                const screenAudioSender = peer.pc.addTrack(localState.localScreenAudioStream);
+                peer.screenAudioSender = screenAudioSender;
+                localState.socket.send(JSON.stringify({type: 'track-info' , track: localState.localScreenAudioStream, stream: localState.localScreenAudioStream, roomId: localState.roomId, trackId: localState.localScreenAudioStream.id, trackType: `screenShareAudio`, target: peer.peerName}));
+
+                const screenVideoSender = peer.pc.addTrack(localState.localScreenVideoStream);
+                peer.screenVideoSender = screenVideoSender;
+                localState.socket.send(JSON.stringify({type: 'track-info' , track: localState.localScreenVideoStream, stream: localState.localScreenVideoStream, roomId: localState.roomId, trackId: localState.localScreenVideoStream.id, trackType: `screenShareVideo`, target: peer.peerName}));
             }
-            if(localState.localScreenVideoStream){
-                const screenVideoSender = localState.peerConnections[peerName].pc.addTrack(localState.localScreenVideoStream);
-                localState.peerConnections[peerName].screenVideoSender = screenVideoSender;
-                localState.socket.send(JSON.stringify({type: 'track-info' , track: localState.localScreenVideoStream, stream: localState.localScreenVideoStream, roomId: localState.roomId, trackId: localState.localScreenVideoStream.id, trackType: `screenShareVideo`, target: peerName}));
-            }
-            localState.peerConnections[peerName].sendStatusUpdate({muted: localState.isMuted, deafened: localState.isDeafened, screenSharing: localState.isScreenSharing});
         }
     }
 }

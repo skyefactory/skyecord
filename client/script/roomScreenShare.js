@@ -19,11 +19,13 @@ export async function startWindowShare(windowSource){
 
         for (const peerName in localState.peerConnections) {
             if(audioTrack){
-                localState.peerConnections[peerName].pc.addTrack(audioTrack);
+                const screenAudioSender = localState.peerConnections[peerName].pc.addTrack(audioTrack);
+                localState.peerConnections[peerName].screenAudioSender = screenAudioSender;
                 localState.socket.send(JSON.stringify({type: 'track-info' , track: audioTrack, stream: stream, roomId: localState.roomId, trackId: audioTrack.id, trackType: `screenShareAudio`, target: peerName}));
             }
             if(screenTrack){
-                localState.peerConnections[peerName].pc.addTrack(screenTrack);
+                const screenVideoSender = localState.peerConnections[peerName].pc.addTrack(screenTrack);
+                localState.peerConnections[peerName].screenVideoSender = screenVideoSender;
                 localState.socket.send(JSON.stringify({type: 'track-info' , track: screenTrack, stream: stream, roomId: localState.roomId, trackId: screenTrack.id, trackType: `screenShareVideo`, target: peerName}));
             }
             localState.peerConnections[peerName].sendStatusUpdate({muted: localState.isMuted, deafened: localState.isDeafened, screenSharing: localState.isScreenSharing});
@@ -31,6 +33,19 @@ export async function startWindowShare(windowSource){
     }
     catch(err){
         console.error('Error accessing display media.', err);
+    }
+}
+
+export function stopWindowShare(){
+    for (const peerName in localState.peerConnections) {
+        localState.socket.send(JSON.stringify({type: 'remove-track', roomId: localState.roomId, target: peerName, trackType: 'screenShareVideo', trackId: localState.peerConnections[peerName].screenVideoSender?.track?.id}));
+        localState.socket.send(JSON.stringify({type: 'remove-track', roomId: localState.roomId, target: peerName, trackType: 'screenShareAudio', trackId: localState.peerConnections[peerName].screenAudioSender?.track?.id}));
+    }
+    if(localState.localScreenVideoStream){
+        localState.localScreenVideoStream = null;
+    }
+    if(localState.localScreenAudioStream){
+        localState.localScreenAudioStream = null;
     }
 }
 

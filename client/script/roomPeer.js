@@ -45,6 +45,32 @@ class Peer {
         this.isTornDown = false;
     }
 
+    removeTrack(trackId, trackType){
+        switch(trackType) {
+            case 'microphoneAudio':{
+                this.remoteStreams.microphoneAudio = null;
+                const audioElement = document.getElementById(`audio-${this.peerName}`);
+                if (audioElement) {
+                    audioElement.pause();
+                    audioElement.srcObject = null;
+                    audioElement.remove();
+                }
+                break;
+            }
+            case 'screenShareAudio':
+                this.remoteStreams.screenAudio = null;
+                debugLog('info', "Removed screen share audio track from peer " + this.peerName);
+                this.pc.removeTrack(this.screenAudioSender);
+                break;
+            case 'screenShareVideo':
+                this.remoteStreams.screenVideo = null;
+                debugLog('info', "Removed screen share video track from peer " + this.peerName);
+                this.pc.removeTrack(this.screenVideoSender);
+                updatePeerScreenShareButton(this.peerName, false);
+                break;
+        }
+    }
+
     setupDataChannels() {
         if (!this.polite) {
             this.chatChannel = this.pc.createDataChannel('chat-channel', { negotiated: false });

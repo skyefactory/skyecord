@@ -1,7 +1,7 @@
 import {debugLog} from './debugLogger.js';
 import {localState, setStoredValue, isElectron} from './roomMisc.js';
 import {ROOM_KEY, encryptMessage} from './roomAuth.js';
-import {startWindowShare, selectWindowSourceUI, displayPeerScreenShare} from './roomScreenShare.js';
+import {startWindowShare, selectWindowSourceUI, displayPeerScreenShare, stopWindowShare} from './roomScreenShare.js';
 const applicationAudio = {
     joined: '../audio/joined.wav',
     left: '../audio/left.wav',
@@ -394,12 +394,19 @@ screenShareButton.addEventListener('click', async () => {
         alert('Screen sharing is only available in the app.');
         return;
     }
+    if(localState.isScreenSharing){
+        stopWindowShare();
+        localState.isScreenSharing = false;
+        screenShareButton.innerHTML = '<img src="./svgicons/screen_share.svg" alt="Start Screen Share">';
+        return;
+    }
+
     try {
         const chosenSource = await selectWindowSourceUI();
         
         await startWindowShare(chosenSource);
         localState.isScreenSharing = true;
-
+        screenShareButton.innerHTML = '<img src="./svgicons/stop_screen_share.svg" alt="Stop Screen Share">';
     } catch (err) {
         console.log(err.message);
     }

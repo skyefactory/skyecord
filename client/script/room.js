@@ -112,6 +112,18 @@ localState.socket.addEventListener('message', async (event) => {
             }
             break;
         }
+
+        case 'track-removed':{
+            const trackId = data.trackId;
+            const from = data.from;
+            const peerFrom = localState.peerConnections[from];
+            const trackType = data.trackType;
+            if (peerFrom){
+                debugLog('info', "Recieved track removed info from server for track ID " + data.trackId + " from peer " + data.from);
+                peerFrom.removeTrack(trackId, trackType);
+            }
+            break;
+        }
         default:
             debugLog('warn', 'Recieved message from server with unknown type: ' + data.type);
     }

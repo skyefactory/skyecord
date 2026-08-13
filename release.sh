@@ -53,10 +53,6 @@ if [[ -f "$CLIENT_FILE" ]]; then
 else
     echo "Warning: $CLIENT_FILE not found, skipping client version update"
 fi
-
-# Verify change
-git diff package.json "$CLIENT_FILE"
-
 # Create commit
 git add -A
 git commit -m "v$NEW_VERSION"

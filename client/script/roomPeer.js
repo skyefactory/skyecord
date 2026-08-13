@@ -11,7 +11,7 @@ const constraints = {
     video: false
 };
 
-
+/* class that contains information about the remote streams from a peer.*/
 class PeerStreams{
     constructor() {
         this.microphoneAudio = null; // This is the remote microphone audio track from the peer
@@ -20,6 +20,9 @@ class PeerStreams{
         this.screenVideo = null; // This is the remote screen share video track from the peer
     }
 }
+/* class that creates, manages, and cleans up peer connections with other users in the room.
+ * responsible for handling incoming and outgoing tracks, data channels, and ICE candidates.
+ */
 class Peer {
     // Constructor
     constructor(peerName) {
@@ -45,6 +48,11 @@ class Peer {
         this.isTornDown = false;
     }
 
+    /* removes a track from the peer's remote streams.
+     *      params:
+     *          trackId - The ID of the track to remove.
+     *          trackType - The type of the track to remove.
+     */
     removeTrack(trackId, trackType){
         switch(trackType) {
             case 'microphoneAudio':{
@@ -70,7 +78,9 @@ class Peer {
                 break;
         }
     }
-
+    /* sets up data channels for chat and status updates between peers.
+     * If the peer is not polite, it creates the channels. If the peer is polite, it listens for incoming channels.
+     */
     setupDataChannels() {
         if (!this.polite) {
             this.chatChannel = this.pc.createDataChannel('chat-channel', { negotiated: false });
@@ -91,7 +101,11 @@ class Peer {
             };
         }
     }
-
+    /* binds event handlers to a data channel for chat or status updates.
+     *      params:
+     *          channel - The RTCDataChannel to bind events to.
+     *          type - The type of the channel ('chat' or 'status').
+     */
     bindChannelEvents(channel, type) {
         channel.onopen = () => {
             debugLog('info', ` channel [${type}] with ${this.peerName} is OPEN`);
@@ -121,26 +135,38 @@ class Peer {
             }
         };
     }
-
+    /* sends a chat message to the peer over the chat data channel.
+     *      params:
+     *          text - The plaintext message to send.
+     */
     sendChatMessage(text) {
         if (this.chatChannel && this.chatChannel.readyState === 'open') {
             this.chatChannel.send(JSON.stringify({ sender: localState.displayName, text: text, timestamp: Date.now() }));
         }
     }
-
+    /* sends a status update to the peer over the status data channel.
+     *      params:
+     *          statusObj - An object containing the status information to send (e.g., muted, deafened, screenSharing).
+     */
     sendStatusUpdate(statusObj) {
         if (this.statusChannel && this.statusChannel.readyState === 'open') {
             this.statusChannel.send(JSON.stringify(statusObj));
         }
     }
-
+    /* handles an incoming chat message from the peer and updates the UI accordingly.
+     *      params:
+     *          data - An object containing the chat message data (sender, text, timestamp).
+     */
     handleIncomingChat(data) {
         const message = data.text.trim();
         const timestamp = new Date(data.timestamp).toLocaleTimeString();
         const sender = this.peerName;
         handleNewMessage(sender, message, timestamp);
     }
-
+    /* handles an incoming status update from the peer and updates the UI accordingly.
+     *      params:
+     *          data - An object containing the status information (muted, deafened, screenSharing, video).
+     */
     handleIncomingStatus(data) {
         this.remoteStatus.muted = data.muted;
         this.remoteStatus.deafened = data.deafened;
@@ -172,13 +198,21 @@ class Peer {
 
     //Peer Connections
 
+    /* sets up the event handlers for the peer connection.
+     */
     setupPeerConnectionEvents(){
         this.pc.ontrack  = (e) => this.onTrack(e);
         this.pc.onicecandidate = (e) => this.onIceCandidate(e);
         this.pc.onconnectionstatechange = () => this.onConnectionStateChange();
         this.pc.onnegotiationneeded = () => this.onNegotiationNeeded();
     }
-
+    /* handles an incoming track from the peer and adds it to the appropriate remote stream based on its type.
+     *      params:
+     *          track - The MediaStreamTrack received from the peer.
+     *          stream - The MediaStream associated with the track.
+     *          trackId - The ID of the received track.
+     *          trackType - The type of the received track (e.g., 'microphoneAudio', 'screenShareAudio', 'screenShareVideo', 'cameraVideo').
+     */
     handleTrack(track, stream, trackId, trackType){
         console.log("Recieved track with ID" + trackId + " and type " + trackType + " from peer " + this.peerName);
         switch(trackType) {
@@ -234,7 +268,10 @@ class Peer {
         }
 
     }
-
+    /* this function cleans up the peer connection, data channels, and associated resources when the peer disconnects or the connection is closed.
+     *      params:
+     *          reason - A string indicating the reason for the teardown (default is 'peer disconnected').
+     */
     teardown(reason = 'peer disconnected') {
         if (this.isTornDown) {
             return;
@@ -291,7 +328,10 @@ class Peer {
             delete localState.peerConnections[this.peerName];
         }
     }
-
+    /* event handler for when a new track is recieved from the peer.
+     *     params:
+     *         event - The RTCTrackEvent containing the track and associated streams.
+     */
     onTrack(event) {
         const { track, streams } = event;
         if(!track){
@@ -315,18 +355,25 @@ class Peer {
         
         return;
     }
-
+    /* event handler for when a new ICE candidate is generated by the peer connection.
+     *      params:
+     *          event - The RTCPeerConnectionIceEvent containing the candidate.
+     */
     onIceCandidate(event) {
         const candidate = event.candidate;
         if (candidate) {
             localState.socket.send(JSON.stringify({ type: 'ice-candidate', candidate: candidate, target: this.peerName, roomId: localState.roomId, sessionId: localState.sessionId }));
         }
     }
+    /* event handler for when the connection state of the peer connection changes. If the connection is disconnected, failed, or closed, it triggers a teardown of the peer connection.
+     */
     onConnectionStateChange(){
         if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed' || this.pc.connectionState === 'closed') {
             this.teardown(`pc ${this.pc.connectionState}`);
         }
     }
+    /* event handler for when negotiation is needed for the peer connection. It creates an offer and sends it to the peer.
+     */
     async onNegotiationNeeded(){
         try {
             this.makingOffer = true;
@@ -338,6 +385,10 @@ class Peer {
             this.makingOffer = false;
         }
     }
+    /* stops voice detection for the peer's remote microphone stream
+     *      params:
+     *          stream - The MediaStream from the peer's microphone.
+     */
 
     stopVoiceDetection(){
         if (this.voiceAnimationFrame) {
@@ -348,8 +399,11 @@ class Peer {
             this.audioContext.close();
             this.audioContext = null;
         }
-    }
-
+    }  
+    /* starts voice detection for the peer's remote microphone stream
+     *      params:
+     *          stream - The MediaStream from the peer's microphone.
+     */
     startVoiceDetection(stream){
         this.audioContext = new AudioContext();
 
@@ -365,7 +419,8 @@ class Peer {
 
         check();
     }
-
+    /* callback function for when the peer is detected to be speaking. Updates the UI to indicate speaking status.
+     */
     onSpeaking(){
         if(this.isSpeaking) return;
         this.isSpeaking = true;
@@ -376,7 +431,8 @@ class Peer {
             userListItem.style.backgroundColor = '#22c55e';
         }
     }
-
+    /* callback function for when the peer is detected to be silent. Updates the UI to indicate silent status.
+     */
     onSilent(){
         if(!this.isSpeaking) return;
         const userListItem = document.getElementById('userlist-' + this.peerName);
@@ -387,7 +443,11 @@ class Peer {
         this.isSpeaking = false;
     }
 
-    //Socket calls
+    /* receives a session description from the peer and sets it as the remote description for the peer connection. If it's an offer, it creates an answer and sends it back to the peer.
+     *      params:
+     *          description - The RTCSessionDescription received from the peer.
+     *          from - The username of the peer sending the description.
+     */
     async receiveDescription(description, from){
     if (description) {
             const readyForOffer = !this.makingOffer && (this.pc.signalingState === 'stable' || this.isSettingRemoteAnswerPending);
@@ -420,6 +480,10 @@ class Peer {
             return;
         }
     }
+    /* receives an ICE candidate from the peer and adds it to the peer connection. If the remote description is not set yet, it queues the candidate for later.
+     *      params:
+     *          candidate - The RTCIceCandidate received from the peer.
+     */
     async receiveIceCandidate(candidate){
         if (candidate) {
             if (this.pc.remoteDescription) {
@@ -435,7 +499,10 @@ class Peer {
     }
 }
 
-
+/* updates the list of peer connections based on the current users in the room. It creates new Peer instances for new users and starts the connection process.
+ *      params:
+ *          users - An array of usernames currently in the room.
+ */
 export async function updatePeers(users) {
     const peersToStart = [];
 
@@ -448,4 +515,21 @@ export async function updatePeers(users) {
     }
 
     await Promise.allSettled(peersToStart.map(peer => peer.start()));
+
+    // If we are currently screensharing, we need to add the screen share tracks to the new peer connections
+    if(localState.isScreenSharing && localState.localScreenVideoStream){
+        for (const peerName in localState.peerConnections) {
+            if(localState.localScreenAudioStream){
+                const screenAudioSender = localState.peerConnections[peerName].pc.addTrack(localState.localScreenAudioStream);
+                localState.peerConnections[peerName].screenAudioSender = screenAudioSender;
+                localState.socket.send(JSON.stringify({type: 'track-info' , track: localState.localScreenAudioStream, stream: localState.localScreenAudioStream, roomId: localState.roomId, trackId: localState.localScreenAudioStream.id, trackType: `screenShareAudio`, target: peerName}));
+            }
+            if(localState.localScreenVideoStream){
+                const screenVideoSender = localState.peerConnections[peerName].pc.addTrack(localState.localScreenVideoStream);
+                localState.peerConnections[peerName].screenVideoSender = screenVideoSender;
+                localState.socket.send(JSON.stringify({type: 'track-info' , track: localState.localScreenVideoStream, stream: localState.localScreenVideoStream, roomId: localState.roomId, trackId: localState.localScreenVideoStream.id, trackType: `screenShareVideo`, target: peerName}));
+            }
+            localState.peerConnections[peerName].sendStatusUpdate({muted: localState.isMuted, deafened: localState.isDeafened, screenSharing: localState.isScreenSharing});
+        }
+    }
 }

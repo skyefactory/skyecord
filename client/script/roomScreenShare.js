@@ -1,4 +1,9 @@
 import {localState} from './roomMisc.js';
+
+/* starts screen sharing for the local user by capturing the selected window source and sending the video and audio tracks to all connected peers.
+ *      params:
+ *          windowSource - The source object representing the window to share.
+ */
 export async function startWindowShare(windowSource){
     try{
         window.electronScreenShare.setTargetSource(windowSource.id);
@@ -36,6 +41,8 @@ export async function startWindowShare(windowSource){
     }
 }
 
+/* stops screen sharing for the local user by removing the video and audio tracks from all connected peers and clearing the local screen streams.
+ */
 export function stopWindowShare(){
     for (const peerName in localState.peerConnections) {
         localState.socket.send(JSON.stringify({type: 'remove-track', roomId: localState.roomId, target: peerName, trackType: 'screenShareVideo', trackId: localState.peerConnections[peerName].screenVideoSender?.track?.id}));
@@ -49,7 +56,8 @@ export function stopWindowShare(){
     }
 }
 
-
+/* opens the screenshare picker modal to allow the user to pick which window source to share. Returns a Promise that resolves with the selected source or rejects if the user cancels.
+ */
 export function selectWindowSourceUI() {
   return new Promise((resolve, reject) => {
     const modal = document.getElementById('screen-picker-modal');
@@ -95,11 +103,11 @@ export function selectWindowSourceUI() {
   });
 }
 
-/**
- * Display a peer's screen share in the display modal
- * @param {string} peerName - Name of the peer sharing their screen
- * @param {MediaStream} videoStream - MediaStream containing the screen share video
- * @param {MediaStream} audioStream - MediaStream containing the screen share audio
+/* displays the screen share modal for a peer, showing their video and audio streams. Allows the user to close the modal.
+ *      params:
+ *          peerName - The name of the peer sharing their screen.
+ *          videoStream - The MediaStream containing the peer's screen video.
+ *          audioStream - The MediaStream containing the peer's screen audio.
  */
 export function displayPeerScreenShare(peerName, videoStream, audioStream) {
   const modal = document.getElementById('screen-share-display-modal');

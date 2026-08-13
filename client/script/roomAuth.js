@@ -27,6 +27,12 @@ if(secretString){
 }
 
 export var ROOM_KEY = null;
+
+/*
+ * initializes the room key by deriving it from the secretBytes and saltBytes.
+ *      params:
+ *          salt - The salt bytes to use in the key derivation.
+ */
 export async function initializeRoomKey(salt){
     saltBytes = salt;
     if(secretBytes && saltBytes) {
@@ -72,18 +78,39 @@ export async function deriveKey(secretBytes, saltBytes){
     ); 
 }
 
+/* encrypts the provided message using AES-GCM with the derived room key.
+ *      params:
+ *          message - The plaintext message to encrypt.
+ *         key - The derived room key to use for encryption (default is ROOM_KEY).
+ *      returns:
+ *          A Promise that resolves to an object containing the encrypted data and the IV
+ */
 export async function encryptMessage(message, key = ROOM_KEY) {
     const data = new TextEncoder().encode(message);
 
     return encryptData(data, key);
 }
 
+/* decrypts the provided encrypted data using AES-GCM with the derived room key.
+ *      params:
+ *          encrypted - The encrypted data to decrypt.
+ *          iv - The initialization vector used during encryption.
+ *          key - The derived room key to use for decryption (default is ROOM_KEY).
+ *      returns:
+ *          A Promise that resolves to the decrypted plaintext message.
+ */
 export async function decryptMessage(encrypted, iv, key = ROOM_KEY) {
     const decrypted = await decryptData(encrypted, iv, key);
 
     return new TextDecoder().decode(decrypted);
 }
-
+/* encrypts the provided data using AES-GCM with the derived room key.
+ *      params:
+ *          data - The plaintext data to encrypt (Uint8Array).
+ *          key - The derived room key to use for encryption (default is ROOM_KEY).
+ *      returns:
+ *          A Promise that resolves to an object containing the encrypted data and the IV.
+ */
 export async function encryptData(data, key = ROOM_KEY) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
 
@@ -102,6 +129,14 @@ export async function encryptData(data, key = ROOM_KEY) {
     };
 }
 
+/* decrypts the provided encrypted data using AES-GCM with the derived room key.
+ *      params:
+ *          encrypted - The encrypted data to decrypt (Uint8Array).
+ *          iv - The initialization vector used during encryption (Uint8Array).
+ *          key - The derived room key to use for decryption (default is ROOM_KEY).
+ *      returns:
+ *          A Promise that resolves to the decrypted plaintext data (Uint8Array).
+ */
 export async function decryptData(encrypted, iv, key = ROOM_KEY) {
     return await crypto.subtle.decrypt(
         {

@@ -31,6 +31,13 @@ const verifySessionApi = 'https://auth.skyefactory.com/verify-session';
 const createRoomApi = 'https://auth.skyefactory.com/room';
 
 
+/*
+ * copies the text from a specified element to the clipboard and updates the button text. Resets the button text after 2 seconds.
+ *      params:
+ *          buttonId - The ID of the button that triggers the copy action.
+ *          textId - The ID of the element containing the text to be copied.
+ *          buttonDefaultText - The default text for the button
+ */
 function copyText(buttonId, textId, buttonDefaultText = 'Copy Room ID') {
     const textElement = document.getElementById(textId);
     const textToCopy = textElement.textContent;
@@ -45,7 +52,11 @@ function copyText(buttonId, textId, buttonDefaultText = 'Copy Room ID') {
         console.error('Failed to copy text: ', err);
     });
 }
-
+/*
+ * sets the error message text and sets a timeout to clear after 3 seconds. If a new error message is set before the timeout, the previous timeout is cleared.
+ *      params:
+ *          message - The error message to be displayed.
+ */
 function setErrorMessage(message) {
     errorMsg.textContent = message;
     if (errorMsgTimeoutId) {
@@ -61,6 +72,10 @@ function setErrorMessage(message) {
     }
 }
 
+
+/*
+ * checks if the user is authenticated by verifying their sessionID stored in localstorage. 
+ */
 async function isAuthenticated() {
     const sessionId = getStoredValue('session_id');
     if (!sessionId) {
@@ -84,6 +99,7 @@ async function isAuthenticated() {
     }
 }
 
+/* utility function to quickly show or hide the new join form and quick join button */
 function setNewJoinVisibility(isVisible) {
     if(isVisible){
         newJoinForm.classList.remove("hidden");
@@ -93,7 +109,7 @@ function setNewJoinVisibility(isVisible) {
         quickJoin.classList.add("hidden");
     }
 }
-
+/* utility function to quickly return to the create / join room screen*/
 function goBackToHome() {
     setErrorMessage('');
     newRoomForm.classList.add("hidden");
@@ -102,6 +118,7 @@ function goBackToHome() {
     setNewJoinVisibility(true);
 }
 
+/* creates the delete room modal for a given room  and returns the element */
 function createDeleteRoomControls(ownRoom, sessionId) {
     const deleteControls = document.createElement('div');
     deleteControls.style.display = 'inline';
@@ -189,6 +206,7 @@ function createDeleteRoomControls(ownRoom, sessionId) {
     return deleteControls;
 }
 
+/* creates the join button for the favorites list */
 function createJoinButton(roomId) {
     const joinButton = document.createElement('button');
     joinButton.type = 'button';
@@ -200,6 +218,7 @@ function createJoinButton(roomId) {
     return joinButton;
 }
 
+/* loads the favorites / own rooms list from the server and populates the UI */
 async function loadFavorites() {
     if (!await isAuthenticated()) {
         setErrorMessage('You must be logged in to load favorites.');
@@ -265,6 +284,10 @@ async function loadFavorites() {
     });
 }
 
+/* sets up the join room form with the provided roomId and pre-fills the display name if available.
+ *      params:
+ *          roomId - The ID of the room to join.
+ */
 function joinRoom(roomId) {
     const nickname = getStoredValue('nickname');
     joinForm.classList.remove("hidden");
@@ -275,6 +298,11 @@ function joinRoom(roomId) {
     setNewJoinVisibility(false);
 }
 
+
+/* creates a new room with the specified name after validating the input and checking user authentication.
+ *      params:
+ *          roomName - The name of the room to be created.
+ */
 async function createRoom(roomName) {
     if (!await isAuthenticated()) {
         setErrorMessage('You must be logged in to create a room.');

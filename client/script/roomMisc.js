@@ -55,6 +55,13 @@ class LocalState {
 
 export const localState = new LocalState();
 
+/* checks if the average audio level from the analyser exceeds the specified threshold.
+ *      params:
+ *          threshold - The threshold value to compare against (0 to 1).
+ *          analyser - The AnalyserNode used to get the audio frequency data.
+ *      returns:
+ *          true if the average audio level exceeds the threshold, false otherwise.
+ */
 function isAudioOverThreshold(threshold, analyser){
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(dataArray);
@@ -63,7 +70,13 @@ function isAudioOverThreshold(threshold, analyser){
     const normalizedValue = average / 255;
     return normalizedValue > threshold;
 }
-
+/* checks if the audio is silent based on the specified threshold and calls the appropriate callback.
+ *      params:
+ *          threshold - The threshold value to determine silence (0 to 1).
+ *          analyser - The AnalyserNode used to get the audio frequency data.
+ *          onNoise - Callback function to call when audio is detected above the threshold.
+ *          onSilence - Callback function to call when audio is below the threshold.
+ */
 export function isAudioSilent(threshold, analyser, onNoise, onSilence){
     if(isAudioOverThreshold(threshold, analyser)){
         onNoise();
@@ -72,6 +85,12 @@ export function isAudioSilent(threshold, analyser, onNoise, onSilence){
     }
 }
 
+/* starts voice detection for the local user's microphone stream and calls the provided callbacks based on audio activity.
+ *      params:
+ *          stream - The MediaStream from the local user's microphone.
+ *          onSpeaking - Callback function to call when the user is speaking.
+ *          onSilent - Callback function to call when the user is silent.
+ */
 export function startVoiceDetectionLocal(stream, onSpeaking, onSilent){
     localAudioContext = new AudioContext();
 
@@ -86,7 +105,8 @@ export function startVoiceDetectionLocal(stream, onSpeaking, onSilent){
     };
     check();
 }
-
+/* stops voice detection for the local user's microphone stream and cleans up resources.
+ */
 export function stopVoiceDetectionLocal(){
     if(localVoiceAnimationFrame){
         cancelAnimationFrame(localVoiceAnimationFrame);
@@ -97,7 +117,8 @@ export function stopVoiceDetectionLocal(){
         localAudioContext = null;
     }
 }
-
+/* callback function for when the local user is detected to be speaking. Updates the UI to indicate speaking status.
+ */
 export function localOnSpeaking(){
     if(localIsSpeaking) return;
     localIsSpeaking = true;
@@ -107,7 +128,8 @@ export function localOnSpeaking(){
         localUserListItem.style.backgroundColor = '#22c55e';
     }
 }
-
+/* callback function for when the local user is detected to be silent. Updates the UI to indicate silent status.
+ */
 export function localOnSilent(){
     if(!localIsSpeaking) return;
     const localUserListItem = document.getElementById('userlist-' + localState.displayName);

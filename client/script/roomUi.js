@@ -22,7 +22,7 @@ const textChatInput = document.getElementById('text-chat-input');
 const textChatSendButton = document.getElementById('text-chat-send');
 const textChatMessagesList = document.getElementById('text-chat-messages');
 const textChatContainer = document.getElementById('text-chat-container');
-
+const screensharingIndicator = document.getElementById('screensharing-indicator');
 
 
 function getChatUserColor(username) {
@@ -398,17 +398,19 @@ screenShareButton.addEventListener('click', async () => {
         stopWindowShare();
         localState.isScreenSharing = false;
         screenShareButton.innerHTML = '<img src="./svgicons/screen_share.svg" alt="Start Screen Share">';
+        screensharingIndicator.classList.add('hidden');
         return;
     }
 
     try {
         const chosenSource = await selectWindowSourceUI();
-        
         await startWindowShare(chosenSource);
         localState.isScreenSharing = true;
         screenShareButton.innerHTML = '<img src="./svgicons/stop_screen_share.svg" alt="Stop Screen Share">';
+        screensharingIndicator.classList.remove('hidden');
     } catch (err) {
         console.log(err.message);
+        screensharingIndicator.classList.add('hidden');
     }
 });
 

@@ -37,7 +37,7 @@
                     <div class="flex-1 bg-black rounded overflow-hidden border border-white/10">
                         <video id="screen-share-video" class="w-full h-full object-cover" playsinline autoplay></video>
                     </div>
-                    <audio id="screen-share-audio" class="w-full" controls></audio>
+                    <audio id="screen-share-audio" class="w-full" playsinline hidden autoplay></audio>
                 </div>
             </div>
         </div>
@@ -50,6 +50,8 @@
 
             </p>
         </div>
+        <p id="screensharing-indicator" class="hidden text-[18px] text-red-500">You are currently screensharing!<br></p>
+
         <div class="flex mb-5 gap-4 min-w-0">
             <div id="users-wrapper" class="flex flex-col w-1/2 min-w-0">
                 <p class="text-[14px] text-white underline">Users</p>

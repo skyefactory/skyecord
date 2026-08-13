@@ -1,6 +1,6 @@
 import {localState, isAudioSilent, startVoiceDetectionLocal, localOnSilent, localOnSpeaking} from './roomMisc.js';
 import {debugLog} from './debugLogger.js';
-import {handleNewMessage, updatePeerStatus} from './roomUi.js';
+import {handleNewMessage, updatePeerStatus, updatePeerScreenShareButton} from './roomUi.js';
 const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' }
@@ -30,7 +30,7 @@ class Peer {
         this.ignoreOffer = false;
         this.isSettingRemoteAnswerPending = false;
         this.otherVolume = 1.0;
-        this.remoteStatus = { muted: false, deafened: false };
+        this.remoteStatus = { muted: false, deafened: false, screenSharing: false, video: false };
         this.remoteStreams = new PeerStreams();
         
         this.chatChannel = null;
@@ -117,6 +117,8 @@ class Peer {
     handleIncomingStatus(data) {
         this.remoteStatus.muted = data.muted;
         this.remoteStatus.deafened = data.deafened;
+        this.remoteStatus.screenSharing = data.screenSharing;
+        this.remoteStatus.video = data.video;
         updatePeerStatus(this.peerName, this.remoteStatus);              
     }
     //Initialization
@@ -190,9 +192,12 @@ class Peer {
             }
             case 'screenShareAudio':
                 this.remoteStreams.screenAudio = stream;
+                debugLog('info', "Recieved screen share audio track from peer " + this.peerName);
                 break;
             case 'screenShareVideo':
                 this.remoteStreams.screenVideo = stream;
+                debugLog('info', "Recieved screen share video track from peer " + this.peerName);
+                updatePeerScreenShareButton(this.peerName, true);
                 break;
             case 'cameraVideo':
                 this.remoteStreams.camVideo = stream;

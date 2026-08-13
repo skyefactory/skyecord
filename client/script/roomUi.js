@@ -1,7 +1,7 @@
 import {debugLog} from './debugLogger.js';
 import {localState, setStoredValue, isElectron} from './roomMisc.js';
 import {ROOM_KEY, encryptMessage} from './roomAuth.js';
-import {startWindowShare, selectWindowSourceUI} from './roomScreenShare.js';
+import {startWindowShare, selectWindowSourceUI, displayPeerScreenShare} from './roomScreenShare.js';
 const applicationAudio = {
     joined: '../audio/joined.wav',
     left: '../audio/left.wav',
@@ -253,7 +253,12 @@ export function updateUserList(users, numusers){
         deafenedIndicator.alt = 'Deafened';
         deafenedIndicator.className = 'w-6 h-6 ml-2 hidden';
 
-
+        const screenShareWatchBtn = document.createElement('button');
+        screenShareWatchBtn.textContent = 'Watch Screen';
+        screenShareWatchBtn.className = 'hidden ml-2 px-2 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-150';
+        screenShareWatchBtn.addEventListener('click', () => {
+            displayPeerScreenShare(user, localState.peerConnections[user].remoteStreams.screenShareStream, localState.peerConnections[user].remoteStreams.screenShareAudioStream);
+        });
 
 
         listItem.appendChild(mutedIndicator);
@@ -393,10 +398,22 @@ screenShareButton.addEventListener('click', async () => {
         const chosenSource = await selectWindowSourceUI();
         
         await startWindowShare(chosenSource);
+        localState.isScreenSharing = true;
+
     } catch (err) {
         console.log(err.message);
     }
 });
+
+export function updatePeerScreenShareButton(peerName, isSharing) {
+    const userListItem = document.getElementById('userlist-' + peerName);
+    if (userListItem) {
+        const screenShareWatchBtn = userListItem.querySelector('button');
+        if (screenShareWatchBtn) {
+            screenShareWatchBtn.classList.toggle('hidden', !isSharing);
+        }
+    }
+}
 
 bindDialogControls(document.getElementById('self-controls'), '.self-controls-open', 'dialog', '.self-controls-close');
 bindDialogControls(document.getElementById('other-controls'), '.other-controls-open', 'dialog', '.other-controls-close');

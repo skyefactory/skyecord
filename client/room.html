@@ -24,6 +24,23 @@
                 
             </div>
         </div>
+
+        <div id="screen-share-display-modal" class="hidden fixed inset-0 bg-black/80 z-[9998] items-center justify-center font-sans">
+            <div class="bg-[#2f3136] p-5 rounded-lg w-11/12 max-w-4xl text-white shadow-2xl border border-white/5 flex flex-col max-h-[90vh]">
+                
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold tracking-wide text-[#f2f3f5]"><span id="screen-share-peer-name">Peer</span>'s Screen</h3>
+                    <button id="close-screen-share-btn" class="bg-transparent border-0 text-zinc-400 hover:text-white cursor-pointer text-2xl p-1 transition-colors">&times;</button>
+                </div>
+
+                <div class="flex flex-col gap-3 flex-1 min-h-0">
+                    <div class="flex-1 bg-black rounded overflow-hidden border border-white/10">
+                        <video id="screen-share-video" class="w-full h-full object-contain" playsinline></video>
+                    </div>
+                    <audio id="screen-share-audio" class="w-full" controls></audio>
+                </div>
+            </div>
+        </div>
         <audio id="application" playsinline hidden></audio>
         <div class="flex justify-between items-center w-full bg-skye-gray-light mb-5 border-skye-gray-border border-2 text-[12px]">
             <p id="room-status" class="room-status">

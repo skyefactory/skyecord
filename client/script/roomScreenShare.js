@@ -14,6 +14,9 @@ export async function startWindowShare(windowSource){
         const screenTrack = stream.getVideoTracks()[0];
         const audioTrack = stream.getAudioTracks()[0]; 
 
+        localState.localScreenAudioStream = audioTrack;
+        localState.localScreenVideoStream = screenTrack;
+
         for (const peerName in localState.peerConnections) {
             if(audioTrack){
                 localState.peerConnections[peerName].pc.addTrack(audioTrack);
@@ -23,6 +26,7 @@ export async function startWindowShare(windowSource){
                 localState.peerConnections[peerName].pc.addTrack(screenTrack);
                 localState.socket.send(JSON.stringify({type: 'track-info' , track: screenTrack, stream: stream, roomId: localState.roomId, trackId: screenTrack.id, trackType: `screenShareVideo`, target: peerName}));
             }
+            localState.peerConnections[peerName].sendStatusUpdate()
         }
     }
     catch(err){
@@ -74,5 +78,56 @@ export function selectWindowSourceUI() {
     closeBtn.onclick = cleanUpAndClose;
     modal.onclick = (e) => { if(e.target === modal) cleanUpAndClose(); };
   });
+}
+
+/**
+ * Display a peer's screen share in the display modal
+ * @param {string} peerName - Name of the peer sharing their screen
+ * @param {MediaStream} videoStream - MediaStream containing the screen share video
+ * @param {MediaStream} audioStream - MediaStream containing the screen share audio
+ */
+export function displayPeerScreenShare(peerName, videoStream, audioStream) {
+  const modal = document.getElementById('screen-share-display-modal');
+  const videoElement = document.getElementById('screen-share-video');
+  const audioElement = document.getElementById('screen-share-audio');
+  const peerNameElement = document.getElementById('screen-share-peer-name');
+  const closeBtn = document.getElementById('close-screen-share-btn');
+
+  peerNameElement.textContent = peerName;
+  
+  if (videoStream) {
+    videoElement.srcObject = videoStream;
+  }
+  
+  if (audioStream) {
+    audioElement.srcObject = audioStream;
+  }
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  const closeScreenShare = () => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    videoElement.srcObject = null;
+    audioElement.srcObject = null;
+  };
+
+  closeBtn.onclick = closeScreenShare;
+  modal.onclick = (e) => { if(e.target === modal) closeScreenShare(); };
+}
+
+/**
+ * Close the screen share display modal
+ */
+export function closeScreenShareDisplay() {
+  const modal = document.getElementById('screen-share-display-modal');
+  const videoElement = document.getElementById('screen-share-video');
+  const audioElement = document.getElementById('screen-share-audio');
+
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  videoElement.srcObject = null;
+  audioElement.srcObject = null;
 }
 

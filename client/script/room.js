@@ -20,7 +20,7 @@ localState.socket.addEventListener('open',() =>{
 });
 
 localState.socket.addEventListener('close', () => {
-    window.location.href = '/';
+    window.location.href = '/index.html';
     stopVoiceDetectionLocal();
     debugLog('info', 'WebSocket connection closed, redirecting to home page');
 });

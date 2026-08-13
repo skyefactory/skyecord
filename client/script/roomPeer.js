@@ -522,7 +522,11 @@ export async function updatePeers(users) {
     if(localState.isScreenSharing && localState.localScreenVideoStream && peersToStart.length > 0) {
         debugLog('info', "Adding screen share tracks to new peer connections");
         if(localState.localScreenAudioStream && localState.localScreenVideoStream){
-            for (const peer of peersToStart) {
+            for (const peer of localState.peerConnections) {
+                if(localState.peerConnections[peer].peerName === localState.displayName) continue; // skip self
+                if(localState.peerConnections[peer].screenAudioSender || localState.peerConnections[peer].screenVideoSender) continue; // skip if already added
+                debugLog('info', "Adding screen share tracks to peer " + localState.peerConnections[peer].peerName);
+                const peer = localState.peerConnections[peer];
                 const screenAudioSender = peer.pc.addTrack(localState.localScreenAudioStream);
                 peer.screenAudioSender = screenAudioSender;
                 localState.socket.send(JSON.stringify({type: 'track-info' , track: localState.localScreenAudioStream, stream: localState.localScreenAudioStream, roomId: localState.roomId, trackId: localState.localScreenAudioStream.id, trackType: `screenShareAudio`, target: peer.peerName}));

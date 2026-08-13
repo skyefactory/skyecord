@@ -3,7 +3,7 @@
  *      params:
  *          key - The key whose value is to be retrieved.
  */
-export function getStoredValue(key) {
+ function getStoredValue(key) {
     return localStorage.getItem(key) ?? '';
 }
 
@@ -13,9 +13,11 @@ export function getStoredValue(key) {
  *          key - The key whose value is to be set.
  *          value - The value to be set for the given key.
  */
-export function setStoredValue(key, value) {
+ function setStoredValue(key, value) {
     localStorage.setItem(key, value);
 }
+
+const isElectron = window.electronAPI?.isElectron || false;
 
 const logonForm = document.getElementById('login-form');
 const newRoomForm = document.getElementById('new-room-form');
@@ -23,7 +25,7 @@ const newJoinForm = document.getElementById('new-join-form');
 const quickJoin = document.getElementById('quick-join');
 const joinForm = document.getElementById('join-form');
 const errorMsg = document.getElementById('error-msg');
-const roomDeletedSFX = '../audio/deleted.wav';
+const roomDeletedSFX = isElectron ? './audio/deleted.wav' : '../audio/deleted.wav';
 let errorMsgTimeoutId = null;
 let warnedUserNoSecret = false;
 const logonApi = 'https://auth.skyefactory.com/login';

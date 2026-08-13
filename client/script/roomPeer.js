@@ -68,11 +68,13 @@ class Peer {
             case 'screenShareAudio':
                 this.remoteStreams.screenAudio = null;
                 debugLog('info', "Removed screen share audio track from peer " + this.peerName);
+                debugLog('info', "screenAudioSender: ", this.screenAudioSender);
                 this.pc.removeTrack(this.screenAudioSender);
                 break;
             case 'screenShareVideo':
                 this.remoteStreams.screenVideo = null;
                 debugLog('info', "Removed screen share video track from peer " + this.peerName);
+                debugLog('info', "screenVideoSender: ", this.screenVideoSender);
                 this.pc.removeTrack(this.screenVideoSender);
                 updatePeerScreenShareButton(this.peerName, false);
                 break;

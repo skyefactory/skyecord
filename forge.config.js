@@ -14,7 +14,7 @@ module.exports = {
     },
     extraResource: [
       "./client",
-      "./dotnet-build" 
+      "./WindowsScreenShareBackend" 
     ],
   },
   rebuildConfig: {},

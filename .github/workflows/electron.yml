@@ -27,9 +27,7 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-      - name: Publish .NET Backend
-        run: |
-          dotnet publish WindowsScreenShareBackend/WindowsScreenShareBackend.csproj -c Release -r win-x64 --self-contained true -o ./dotnet-build
+      
       - name: Install Project Dependencies
         run: npm ci
 

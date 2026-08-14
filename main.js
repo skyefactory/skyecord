@@ -1,58 +1,22 @@
 if(require('electron-squirrel-startup')) return;
-const { app, BrowserWindow, session, desktopCapturer, ipcMain } = require('electron/main'); 
+const { app, BrowserWindow, session, Menu, desktopCapturer, ipcMain } = require('electron/main'); 
 const { ConnectionBuilder } = require('electron-cgi'); 
 const { updateElectronApp } = require('update-electron-app');
 const path = require('path');
-const fs = require('fs');
 
 updateElectronApp();
 
-let connection;
-const localBackendDir = path.join(__dirname, 'dotnet-build');
-const legacyLocalBackendDir = path.join(__dirname, 'WindowsScreenShareBackend', 'dotnet-build');
+const connection = new ConnectionBuilder()
+        .connectTo('dotnet', 'run', '--project', 'WindowsScreenShareBackend')
+        .build();
 
-const getBackendPath = () => {
-    if (app.isPackaged) {
-        return path.join(process.resourcesPath, 'dotnet-build', 'WindowsScreenShareBackend.exe');
-    }
-
-    const preferredPath = path.join(localBackendDir, 'WindowsScreenShareBackend.dll');
-    if (fs.existsSync(preferredPath)) {
-        return preferredPath;
-    }
-
-    return path.join(legacyLocalBackendDir, 'WindowsScreenShareBackend.dll');
+connection.onDisconnect = () => {
+    console.log('Lost connection to the .Net process');
 };
 
-const startBackendConnection = () => {
-    if (connection) {
-        return connection;
-    }
-
-    const builder = new ConnectionBuilder();
-
-    if (app.isPackaged) {
-        builder.connectTo(getBackendPath());
-    } else {
-        builder.connectTo('dotnet', getBackendPath());
-    }
-
-    builder.onExit((code) => {
-        console.log(`Connection to ${getBackendPath()} was terminated (code: ${code})`);
-    });
-
-    builder.onStderr((data) => {
-        console.error(String(data).trimEnd());
-    });
-
-    connection = builder.build();
-
-    connection.onDisconnect = () => {
-        console.log('Lost connection to the .Net process');
-    };
-
-    return connection;
-};
+connection.send('greet', 'Electron User', (response) => {
+    console.log(response); 
+});
 
 // IPC communication handlers
 ipcMain.handle('get-share-sources', async() => {
@@ -105,8 +69,6 @@ const createWindow = () => {
 
 // All initialization happens safely inside whenReady
 app.whenReady().then(() => {
-    startBackendConnection();
-
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
         if(selectedSourceId){
             desktopCapturer.getSources({ types: ['window', 'screen'] }).then(sources => {
@@ -125,17 +87,6 @@ app.whenReady().then(() => {
     });
 
     createWindow();
-
-    if (!app.isPackaged) {
-        connection.send('greeting', 'John', (error, theGreeting) => {
-            if (error) {
-                console.log(error); //serialized exception from the .NET handler
-                return;
-            }
-
-            console.log(theGreeting); // will print "Hello John!"
-        });
-    }
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

@@ -259,6 +259,9 @@ export function updateUserList(users, numusers){
         screenShareWatchBtn.addEventListener('click', () => {
             displayPeerScreenShare(user, localState.peerConnections[user].remoteStreams.screenVideo, localState.peerConnections[user].remoteStreams.screenAudio);
         });
+        if(localState.peerConnections[user] && localState.peerConnections[user].remoteStreams.screenVideo){
+            screenShareWatchBtn.classList.remove('hidden');
+        }
 
         listItem.appendChild(screenShareWatchBtn);
         listItem.appendChild(mutedIndicator);
@@ -419,7 +422,13 @@ export function updatePeerScreenShareButton(peerName, isSharing) {
     if (userListItem) {
         const screenShareWatchBtn = userListItem.querySelector('button');
         if (screenShareWatchBtn) {
-            screenShareWatchBtn.classList.toggle('hidden', !isSharing);
+            if(isSharing){
+                debugLog('info','showing watch button', peerName, isSharing);
+                screenShareWatchBtn.classList.remove('hidden');
+            } else {
+                debugLog('info','hiding watch button', peerName, isSharing);
+                screenShareWatchBtn.classList.add('hidden');
+            }
         }
     }
 }

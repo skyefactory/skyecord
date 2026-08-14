@@ -533,6 +533,7 @@ export async function updatePeers(users) {
                     const screenVideoSender = peer.pc.addTrack(screenTrack);
                     peer.screenVideoSender = screenVideoSender;
                     localState.socket.send(JSON.stringify({type: 'track-info' , track: screenTrack, stream: localState.localScreenVideoStream, roomId: localState.roomId, trackId: screenTrack.id, trackType: `screenShareVideo`, target: peer.peerName}));
+                    
                 }
             }
         }

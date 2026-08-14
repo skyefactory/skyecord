@@ -1,27 +1,9 @@
 if(require('electron-squirrel-startup')) return;
-const { app, BrowserWindow, session, Menu, desktopCapturer, ipcMain } = require('electron/main'); 
-const { ConnectionBuilder } = require('electron-cgi'); 
+const { app, BrowserWindow, session, Menu, desktopCapturer, ipcMain } = require('electron/main');
 const { updateElectronApp } = require('update-electron-app');
 const path = require('path');
 
 updateElectronApp();
-const dotNetProjectPath = path.join(process.resourcesPath, 'WindowsScreenShareBackend');
-const connection = new ConnectionBuilder()
-        .connectTo('dotnet', 'run', '--project', dotNetProjectPath)
-        .build();
-
-
-connection.onDisconnect = () => {
-    console.log('Lost connection to the .Net process');
-};
-
-connection.send('greeting', 'John', (err, theGreeting) => {
-    if (err) {
-        console.log("error occured running test greeting':", err);
-        return;
-    }
-    console.log(theGreeting); // will print "Hello John!"
-});
 
 // IPC communication handlers
 ipcMain.handle('get-share-sources', async() => {

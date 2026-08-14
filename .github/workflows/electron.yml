@@ -16,7 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-2022]
+        os: [windows-2022, ubuntu-latest]
 
     steps:
       - name: Checkout Source Code

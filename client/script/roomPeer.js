@@ -7,7 +7,11 @@ const configuration = {
     ]
 };
 const constraints = {
-    audio: true,
+    audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+    },
     video: false
 };
 

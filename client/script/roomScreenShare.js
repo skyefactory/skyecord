@@ -1,5 +1,18 @@
 import {localState} from './roomMisc.js';
 
+var audioCtx = null;
+var invertNode = null;
+var delayNode = null;
+
+
+function getAllPeerMicrophoneAudioElements(){
+    const audioElements = [];
+    for (const peerName in localState.peerConnections) {
+        audioElements.push(document.getElementById(`audio-${peerName}`));
+    }
+    return audioElements;
+}
+
 /* starts screen sharing for the local user by capturing the selected window source and sending the video and audio tracks to all connected peers.
  *      params:
  *          windowSource - The source object representing the window to share.
@@ -16,11 +29,46 @@ export async function startWindowShare(windowSource){
 
             }
         });
-        const screenTrack = stream.getVideoTracks()[0];
-        const audioTrack = stream.getAudioTracks()[0]; 
 
-        localState.localScreenAudioStream = stream;
-        localState.localScreenVideoStream = stream;
+        const screenTrack = stream.getVideoTracks()[0];
+        const rawAudioTrack = stream.getAudioTracks()[0];
+        let audioTrack = rawAudioTrack;
+        
+        if(rawAudioTrack){
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const screenSource = audioCtx.createMediaStreamSource(new MediaStream([rawScreenAudioTrack]));
+          const audioDestination = audioCtx.createMediaStreamDestination();
+          invertNode = audioCtx.createGain();
+          invertNode.gain.value = -1.0;
+          delayNode = audioCtx.createDelay(1.0);
+          delayNode.delayTime.value = 0.030;
+
+          delayNode.connect(invertNode);
+          invertNode.connect(audioDestination);
+          screenSource.connect(audioDestination);
+
+          // 3. Connect all active peer audio elements to the delay node
+          const microphoneAudioElements = getAllPeerMicrophoneAudioElements();
+          let hasPeerAudio = false;
+
+          microphoneAudioElements.forEach(audioElement => {
+              if (audioElement.srcObject && audioElement.srcObject.getAudioTracks().length > 0) {
+                  const peerSource = audioCtx.createMediaStreamSource(audioElement.srcObject);
+                  peerSource.connect(delayNode);
+                  hasPeerAudio = true;
+              }
+          });
+
+          audioTrack = audioDestination.stream.getAudioTracks()[0];
+          localState.screenAudioContext = audioCtx; 
+        }
+
+        const outputStream = new MediaStream();
+        if (screenTrack) outputStream.addTrack(screenTrack);
+        if (audioTrack) outputStream.addTrack(audioTrack);
+
+        localState.localScreenAudioStream = outputStream;
+        localState.localScreenVideoStream = outputStream;
 
         for (const peerName in localState.peerConnections) {
             if(audioTrack){
@@ -34,6 +82,7 @@ export async function startWindowShare(windowSource){
                 localState.socket.send(JSON.stringify({type: 'track-info' , track: screenTrack, stream: stream, roomId: localState.roomId, trackId: screenTrack.id, trackType: `screenShareVideo`, target: peerName}));
             }
             localState.peerConnections[peerName].sendStatusUpdate({muted: localState.isMuted, deafened: localState.isDeafened, screenSharing: localState.isScreenSharing});
+            
         }
     }
     catch(err){

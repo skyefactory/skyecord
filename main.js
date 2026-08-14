@@ -1,12 +1,12 @@
 if(require('electron-squirrel-startup')) return;
-const { app, BrowserWindow, session, Menu, desktopCapturer, ipcMain } = require('electron/main');
+
+const { app, BrowserWindow, session, Menu, desktopCapturer, ipcMain } = require('electron/main'); 
 const { updateElectronApp } = require('update-electron-app');
 const path = require('path');
 
 updateElectronApp();
 
-// IPC communication handlers
-ipcMain.handle('get-share-sources', async() => {
+ipcMain.handle('get-share-sources', async() =>{
     return await desktopCapturer.getSources({
         types: ['window', 'screen'],
         thumbnailSize: { width: 150, height: 150 },
@@ -33,14 +33,7 @@ const createWindow = () => {
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
         console.log("Permission requested:", permission);
 
-        const allowedPermissions = [
-            'audioCapture', 
-            'videoCapture', 
-            'display-capture', 
-            'media', 
-            'clipboard-read', 
-            'clipboard-sanitized-write'
-        ];
+        const allowedPermissions = ['audioCapture', 'videoCapture', 'display-capture', 'media', 'clipboard-read', 'clipboard-sanitized-write'];
         
         if (allowedPermissions.includes(permission)) {
             return callback(true);
@@ -54,24 +47,25 @@ const createWindow = () => {
     );
 };
 
-// All initialization happens safely inside whenReady
 app.whenReady().then(() => {
-    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    session.defaultSession.setDisplayMediaRequestHandler((request,callback) =>{
         if(selectedSourceId){
             desktopCapturer.getSources({ types: ['window', 'screen'] }).then(sources => {
                 const targetSource = sources.find(source => source.id === selectedSourceId);
-                if (!targetSource) {
-                    callback({});
-                    return;
+                if(targetSource){
+                    callback({
+                        video: targetSource,
+                        audio: 'loopback'
+                    });
+                } else{
+                    callback({
+                        error: 'No source found with the selected ID'
+                    })
                 }
-
-                callback({
-                    video: targetSource,
-                    audio: request.audioRequested ? 'loopback' : undefined // Windows system loopback audio
-                });
             });
         }
     });
+
 
     createWindow();
 

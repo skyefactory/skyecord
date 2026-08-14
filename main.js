@@ -5,9 +5,9 @@ const { updateElectronApp } = require('update-electron-app');
 const path = require('path');
 
 updateElectronApp();
-
+const dotNetProjectPath = path.join(process.resourcesPath, 'WindowsScreenShareBackend');
 const connection = new ConnectionBuilder()
-        .connectTo('dotnet', 'run', '--project', 'WindowsScreenShareBackend')
+        .connectTo('dotnet', 'run', '--project', dotNetProjectPath)
         .build();
 
 connection.onDisconnect = () => {

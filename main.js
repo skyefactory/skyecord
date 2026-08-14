@@ -15,9 +15,9 @@ if (app.isPackaged) {
     connection = new ConnectionBuilder().connectTo('dotnet', pathToDll).build();
 }
 
-connection.onDisconnect(() => {
-    console.log('Backend disconnected');
-});
+connection.onDisconnect = () => {
+    console.log('Lost connection to the .Net process');
+};
 
 connection.send('greet', 'Electron User', (response) => {
     console.log(response); 

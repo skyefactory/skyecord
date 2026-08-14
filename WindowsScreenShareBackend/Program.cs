@@ -1,9 +1,17 @@
 ﻿using ElectronCgi.DotNet;
 
-var connection = new ConnectionBuilder().WithLogging().Build();
+static void Main(string[] args)
+{
+    var connection = new ConnectionBuilder()
+                        .WithLogging()
+                        .Build();
 
-// Register a handler that Node.js can invoke
-connection.On<string, string>("greet", name => {
-    // You can execute any code from your .NET NuGet packages here
-    return $"Hello {name} from .NET!";
-});
+    // expects a request named "greeting" with a string argument and returns a string
+    connection.On("greeting", (string name) =>
+    {
+        return $"Hello {name}!";
+    });
+
+    // wait for incoming requests
+    connection.Listen();
+}

@@ -9,16 +9,36 @@ cd "$PROJECT_DIR"
 # Ensure we are on master
 git checkout master
 
+BUMP_TYPE="${1:-patch}"
+
+case "$BUMP_TYPE" in
+  major|minor|patch)
+    ;;
+  *)
+    echo "Usage: $0 [major|minor|patch]"
+    exit 1
+    ;;
+esac
+
 # Get current version from package.json
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 
 echo "Current version: $CURRENT_VERSION"
 
-# Split version and increment patch number
+# Split version and increment the selected version part
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
 
-NEW_PATCH=$((PATCH + 1))
-NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+case "$BUMP_TYPE" in
+  major)
+    NEW_VERSION="$((MAJOR + 1)).0.0"
+    ;;
+  minor)
+    NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
+    ;;
+  patch)
+    NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+    ;;
+esac
 
 echo "New version: $NEW_VERSION"
 

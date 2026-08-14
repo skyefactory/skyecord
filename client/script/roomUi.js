@@ -203,6 +203,7 @@ export function updateUserList(users, numusers){
 
             const nameSpan = document.createElement('span');
             nameSpan.textContent = user + ' (You)';
+            nameSpan.style.color = getChatUserColor(user);
             listItem.appendChild(nameSpan);
 
             const selfControls = document.getElementById('self-controls');

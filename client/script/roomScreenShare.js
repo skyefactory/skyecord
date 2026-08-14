@@ -10,8 +10,8 @@ export async function startWindowShare(windowSource){
         const stream = await navigator.mediaDevices.getDisplayMedia({
             audio: true,
             video:{
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
                 frameRate: { ideal: 30 }
 
             }

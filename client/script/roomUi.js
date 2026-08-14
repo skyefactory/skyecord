@@ -196,14 +196,20 @@ export function updateUserList(users, numusers){
     users.forEach(user => {
         const listItem = document.createElement('li');
         listItem.id = 'userlist-' + user;
+        let rightControls = null;
+        let leftSide = null;
         if (user === localState.displayName) {
-            listItem.textContent = user + ' (You)';
-            listItem.className = 'p-1 bg-gray-500 text-white font-bold ';
+            listItem.className = 'p-1 bg-gray-500 text-white font-bold flex items-center justify-between gap-3';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = user + ' (You)';
+            listItem.appendChild(nameSpan);
 
             const selfControls = document.getElementById('self-controls');
             const controlsInstance = selfControls.cloneNode(true);
             if (controlsInstance) {
-                controlsInstance.style.display = 'inline';
+                controlsInstance.style.display = 'inline-flex';
+                controlsInstance.classList.add('ml-auto');
                 bindDialogControls(controlsInstance, '.self-controls-open', 'dialog', '.self-controls-close');
                 listItem.appendChild(controlsInstance);
                 const saveButton = controlsInstance.querySelector('.save-button-self-controls');
@@ -225,37 +231,58 @@ export function updateUserList(users, numusers){
                 } 
             }
         } else {
-            listItem.className = 'p-1 bg-skye-gray-input text-white w-[75%]';
-            listItem.textContent = user;
+            listItem.className = 'p-1 bg-skye-gray-input text-white w-full flex items-center justify-between gap-3';
+
+            leftSide = document.createElement('div');
+            leftSide.className = 'flex items-center gap-2 min-w-0';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = user;
+            nameSpan.style.color = getChatUserColor(user);
+            leftSide.appendChild(nameSpan);
+
+            rightControls = document.createElement('div');
+            rightControls.className = 'ml-auto flex items-center gap-2';
+
             const volumeSlider = document.createElement('input');
             volumeSlider.type = 'range';
             volumeSlider.min = '0';
             volumeSlider.max = '100';
             volumeSlider.value = '100';
-            volumeSlider.className = 'w-24 ml-2';
+            volumeSlider.className = 'w-24';
+            volumeSlider.id = 'volume-slider-' + user;
+            const volumeSliderLabel = document.createElement('label');
+            volumeSliderLabel.htmlFor = volumeSlider.id;
+            volumeSliderLabel.textContent = 'VOL:';
+            volumeSliderLabel.className = 'text-white text-[10px]';
+            rightControls.appendChild(volumeSliderLabel);
             volumeSlider.addEventListener('input', (event) => {
                 const audioElement = document.getElementById('audio-' + user);
                 if (audioElement) {
                     audioElement.volume = event.target.value / 100;
                 }
             });
-            listItem.appendChild(volumeSlider);
+            rightControls.appendChild(volumeSlider);
         }
         const mutedIndicator = document.createElement('img');
         mutedIndicator.id = 'muted-indicator-' + user;
         mutedIndicator.src = './svgicons/mic_off.svg';
         mutedIndicator.alt = 'Muted';
-        mutedIndicator.className = 'w-6 h-6 ml-2 hidden';
-
+        mutedIndicator.className = 'w-6 h-6 hidden';
+        if(localState.peerConnections[user] && localState.peerConnections[user].isMuted){
+            mutedIndicator.classList.remove('hidden');
+        }
         const deafenedIndicator = document.createElement('img');
         deafenedIndicator.id = 'deafened-indicator-' + user;
         deafenedIndicator.src = './svgicons/media_output_off.svg';
         deafenedIndicator.alt = 'Deafened';
-        deafenedIndicator.className = 'w-6 h-6 ml-2 hidden';
-
+        deafenedIndicator.className = 'w-6 h-6 hidden';
+        if(localState.peerConnections[user] && localState.peerConnections[user].isDeafened){
+            deafenedIndicator.classList.remove('hidden');
+        }
         const screenShareWatchBtn = document.createElement('button');
         screenShareWatchBtn.textContent = 'Watch Screen';
-        screenShareWatchBtn.className = 'hidden ml-2 px-2 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-150';
+        screenShareWatchBtn.className = 'hidden px-2 py-1 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors duration-150';
         screenShareWatchBtn.addEventListener('click', () => {
             displayPeerScreenShare(user, localState.peerConnections[user].remoteStreams.screenVideo, localState.peerConnections[user].remoteStreams.screenAudio);
         });
@@ -263,9 +290,17 @@ export function updateUserList(users, numusers){
             screenShareWatchBtn.classList.remove('hidden');
         }
 
-        listItem.appendChild(screenShareWatchBtn);
-        listItem.appendChild(mutedIndicator);
-        listItem.appendChild(deafenedIndicator);
+        if (user !== localState.displayName) {
+            leftSide.appendChild(mutedIndicator);
+            leftSide.appendChild(deafenedIndicator);
+            rightControls.appendChild(screenShareWatchBtn);
+            listItem.appendChild(rightControls);
+            listItem.insertBefore(leftSide, rightControls);
+        } else {
+            listItem.appendChild(screenShareWatchBtn);
+            listItem.appendChild(mutedIndicator);
+            listItem.appendChild(deafenedIndicator);
+        }
         userList.appendChild(listItem);
     });
 }

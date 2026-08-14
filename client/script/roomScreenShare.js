@@ -19,8 +19,8 @@ export async function startWindowShare(windowSource){
         const screenTrack = stream.getVideoTracks()[0];
         const audioTrack = stream.getAudioTracks()[0]; 
 
-        localState.localScreenAudioStream = audioTrack;
-        localState.localScreenVideoStream = screenTrack;
+        localState.localScreenAudioStream = stream;
+        localState.localScreenVideoStream = stream;
 
         for (const peerName in localState.peerConnections) {
             if(audioTrack){

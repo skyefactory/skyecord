@@ -12,11 +12,10 @@ module.exports = {
       ProductName: 'skyecord',
       InternalName: 'skyecord',
     },
-    extraResource:[
-      "./client"
+    extraResource: [
+      "./client",
+      "./dotnet-build" 
     ],
-
-
   },
   rebuildConfig: {},
   makers: [

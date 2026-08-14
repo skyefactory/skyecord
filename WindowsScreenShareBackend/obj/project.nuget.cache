@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "dgSpecHash": "jgqaw85Hcas=",
+  "success": true,
+  "projectFilePath": "/home/skye/skyecord/WindowsScreenShareBackend/WindowsScreenShareBackend.csproj",
+  "expectedPackageFiles": [
+    "/home/skye/.nuget/packages/electroncgi.dotnet/1.0.3/electroncgi.dotnet.1.0.3.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.aspnetcore.hosting.abstractions/2.0.0/microsoft.aspnetcore.hosting.abstractions.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.aspnetcore.hosting.server.abstractions/2.0.0/microsoft.aspnetcore.hosting.server.abstractions.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.aspnetcore.http.abstractions/2.0.0/microsoft.aspnetcore.http.abstractions.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.aspnetcore.http.features/2.0.0/microsoft.aspnetcore.http.features.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.configuration.abstractions/2.0.0/microsoft.extensions.configuration.abstractions.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.dependencyinjection/2.0.0/microsoft.extensions.dependencyinjection.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/2.0.0/microsoft.extensions.dependencyinjection.abstractions.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.fileproviders.abstractions/2.0.0/microsoft.extensions.fileproviders.abstractions.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.hosting.abstractions/2.0.0/microsoft.extensions.hosting.abstractions.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.logging/2.0.0/microsoft.extensions.logging.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.logging.abstractions/2.0.0/microsoft.extensions.logging.abstractions.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.options/2.0.0/microsoft.extensions.options.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.extensions.primitives/2.0.0/microsoft.extensions.primitives.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/naudio/2.3.0/naudio.2.3.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/naudio.asio/2.3.0/naudio.asio.2.3.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/naudio.core/2.3.0/naudio.core.2.3.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/naudio.midi/2.3.0/naudio.midi.2.3.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/naudio.wasapi/2.3.0/naudio.wasapi.2.3.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/naudio.winmm/2.3.0/naudio.winmm.2.3.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/newtonsoft.json/12.0.1/newtonsoft.json.12.0.1.nupkg.sha512",
+    "/home/skye/.nuget/packages/serilog/2.5.0/serilog.2.5.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/serilog.aspnetcore/2.1.1/serilog.aspnetcore.2.1.1.nupkg.sha512",
+    "/home/skye/.nuget/packages/serilog.extensions.logging/2.0.0/serilog.extensions.logging.2.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/serilog.sinks.file/4.0.0/serilog.sinks.file.4.0.0.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.netcore.app.runtime.win-x64/10.0.11/microsoft.netcore.app.runtime.win-x64.10.0.11.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.aspnetcore.app.runtime.win-x64/10.0.11/microsoft.aspnetcore.app.runtime.win-x64.10.0.11.nupkg.sha512",
+    "/home/skye/.nuget/packages/microsoft.netcore.app.host.win-x64/10.0.11/microsoft.netcore.app.host.win-x64.10.0.11.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "message": "Package 'Newtonsoft.Json' 12.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-5crp-9r3c-p9vr",
+      "projectPath": "/home/skye/skyecord/WindowsScreenShareBackend/WindowsScreenShareBackend.csproj",
+      "warningLevel": 1,
+      "filePath": "/home/skye/skyecord/WindowsScreenShareBackend/WindowsScreenShareBackend.csproj",
+      "libraryId": "Newtonsoft.Json",
+      "targetGraphs": [
+        "net10.0",
+        "net10.0/win-x64"
+      ]
+    }
+  ]
+}

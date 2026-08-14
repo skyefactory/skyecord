@@ -14,7 +14,6 @@ module.exports = {
     },
     extraResource: [
       "./client",
-      "./WindowsScreenShareBackend" 
     ],
   },
   rebuildConfig: {},

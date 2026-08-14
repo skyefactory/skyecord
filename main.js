@@ -8,7 +8,7 @@ updateElectronApp();
 
 ipcMain.handle('get-share-sources', async() =>{
     return await desktopCapturer.getSources({
-        types: ['window', 'screen'],
+        types: ['window', 'screen', 'audio'],
         thumbnailSize: { width: 150, height: 150 },
     });
 });
@@ -50,7 +50,7 @@ const createWindow = () => {
 app.whenReady().then(() => {
     session.defaultSession.setDisplayMediaRequestHandler((request,callback) =>{
         if(selectedSourceId){
-            desktopCapturer.getSources({ types: ['window', 'screen'] }).then(sources => {
+            desktopCapturer.getSources({ types: ['window', 'screen', 'audio'] }).then(sources => {
                 const targetSource = sources.find(source => source.id === selectedSourceId);
                 if(targetSource){
                     callback({

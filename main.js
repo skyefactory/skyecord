@@ -10,12 +10,17 @@ const connection = new ConnectionBuilder()
         .connectTo('dotnet', 'run', '--project', dotNetProjectPath)
         .build();
 
+
 connection.onDisconnect = () => {
     console.log('Lost connection to the .Net process');
 };
 
-connection.send('greet', 'Electron User', (response) => {
-    console.log(response); 
+connection.send('greeting', 'John', (err, theGreeting) => {
+    if (err) {
+        console.log("error occured running test greeting':", err);
+        return;
+    }
+    console.log(theGreeting); // will print "Hello John!"
 });
 
 // IPC communication handlers

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "jgqaw85Hcas=",
+  "dgSpecHash": "krGHtVe4wsk=",
   "success": true,
   "projectFilePath": "/home/skye/skyecord/WindowsScreenShareBackend/WindowsScreenShareBackend.csproj",
   "expectedPackageFiles": [
@@ -28,10 +28,7 @@
     "/home/skye/.nuget/packages/serilog/2.5.0/serilog.2.5.0.nupkg.sha512",
     "/home/skye/.nuget/packages/serilog.aspnetcore/2.1.1/serilog.aspnetcore.2.1.1.nupkg.sha512",
     "/home/skye/.nuget/packages/serilog.extensions.logging/2.0.0/serilog.extensions.logging.2.0.0.nupkg.sha512",
-    "/home/skye/.nuget/packages/serilog.sinks.file/4.0.0/serilog.sinks.file.4.0.0.nupkg.sha512",
-    "/home/skye/.nuget/packages/microsoft.netcore.app.runtime.win-x64/10.0.11/microsoft.netcore.app.runtime.win-x64.10.0.11.nupkg.sha512",
-    "/home/skye/.nuget/packages/microsoft.aspnetcore.app.runtime.win-x64/10.0.11/microsoft.aspnetcore.app.runtime.win-x64.10.0.11.nupkg.sha512",
-    "/home/skye/.nuget/packages/microsoft.netcore.app.host.win-x64/10.0.11/microsoft.netcore.app.host.win-x64.10.0.11.nupkg.sha512"
+    "/home/skye/.nuget/packages/serilog.sinks.file/4.0.0/serilog.sinks.file.4.0.0.nupkg.sha512"
   ],
   "logs": [
     {
@@ -43,8 +40,7 @@
       "filePath": "/home/skye/skyecord/WindowsScreenShareBackend/WindowsScreenShareBackend.csproj",
       "libraryId": "Newtonsoft.Json",
       "targetGraphs": [
-        "net10.0",
-        "net10.0/win-x64"
+        "net10.0"
       ]
     }
   ]

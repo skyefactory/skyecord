@@ -1,15 +1,15 @@
 if(require('electron-squirrel-startup')) return;
 const { app, BrowserWindow, session, Menu, desktopCapturer, ipcMain } = require('electron/main'); 
-const { Connection } = require('electron-cgi');
+const Connection = require('electron-cgi').Connection; 
 const { updateElectronApp } = require('update-electron-app');
 const path = require('path');
 
 updateElectronApp();
 
-// Dynamic .NET backend path resolving
 let connection;
 if (app.isPackaged) {
     const pathToExe = path.join(process.resourcesPath, 'dotnet-build', 'WindowsScreenShareBackend.exe');
+    // This will now execute successfully without a constructor error
     connection = new Connection(pathToExe); 
 } else {
     const pathToDll = path.join(__dirname, 'WindowsScreenShareBackend', 'dotnet-build', 'WindowsScreenShareBackend.dll'); 

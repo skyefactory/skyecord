@@ -59,7 +59,7 @@ class Peer {
      */
     removeTrack(trackId, trackType){
         switch(trackType) {
-            case 'microphoneAudio':{
+            case 'microphoneAudio': {
                 this.remoteStreams.microphoneAudio = null;
                 const audioElement = document.getElementById(`audio-${this.peerName}`);
                 if (audioElement) {
@@ -69,19 +69,34 @@ class Peer {
                 }
                 break;
             }
-            case 'screenShareAudio':
+            case 'screenShareAudio': {
                 this.remoteStreams.screenAudio = null;
                 debugLog('info', "Removed screen share audio track from peer " + this.peerName);
-                debugLog('info', "screenAudioSender: ", this.screenAudioSender);
-                if(this.screenAudioSender){this.pc.removeTrack(this.screenAudioSender);}
+                const audioModalElement = document.getElementById('screen-share-audio');
+                if (audioModalElement) {
+                    audioModalElement.srcObject = null;
+                }
                 break;
-            case 'screenShareVideo':
+            }
+            case 'screenShareVideo': {
                 this.remoteStreams.screenVideo = null;
                 debugLog('info', "Removed screen share video track from peer " + this.peerName);
-                debugLog('info', "screenVideoSender: ", this.screenVideoSender);
-                if(this.screenVideoSender){this.pc.removeTrack(this.screenVideoSender);}
+                const modal = document.getElementById('screen-share-display-modal');
+                const videoElement = document.getElementById('screen-share-video');
+                const audioElement = document.getElementById('screen-share-audio');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+                if (videoElement) {
+                    videoElement.srcObject = null;
+                }
+                if (audioElement) {
+                    audioElement.srcObject = null;
+                }
                 updatePeerScreenShareButton(this.peerName, false);
                 break;
+            }
         }
     }
     /* sets up data channels for chat and status updates between peers.

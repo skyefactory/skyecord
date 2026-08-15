@@ -1,6 +1,6 @@
 import {localState, isAudioSilent, startVoiceDetectionLocal, localOnSilent, localOnSpeaking} from './roomMisc.js';
 import {debugLog} from './debugLogger.js';
-import {handleNewMessage, updatePeerStatus, updatePeerScreenShareButton} from './roomUi.js';
+import {handleNewMessage, updatePeerStatus, updatePeerScreenShareButton, handleNewImageMessage, handleNewVideoMessage, handleNewAudioMessage} from './roomUi.js';
 const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' }
@@ -10,6 +10,27 @@ const constraints = {
     audio: true,
     video: false
 };
+
+async function* chunkFile(file, chunkSize){
+    let offset = 0;
+    while (offset < file.size) {
+        const blob = file.slice(offset, offset + chunkSize);
+        const buf = await blob.arrayBuffer();
+        yield buf;
+        offset += chunkSize;
+    }
+}
+
+class FileMeta{
+    constructor(fileName, fileSize, fileType){
+        this.fileName = fileName;
+        this.fileSize = fileSize;
+        this.fileType = fileType;
+        this.chunks = [];
+        this.recievedAllChunks = false;
+    }
+}
+
 
 /* class that contains information about the remote streams from a peer.*/
 class PeerStreams{
@@ -46,6 +67,8 @@ class Peer {
         this.pendingRemoteTracks = []; // tracks received before their metadata arrives
         this.pendingTrackInfos = []; // track-info messages received before the track arrives
         this.isTornDown = false;
+        this.recievedFiles = {};
+        
     }
 
     /* removes a track from the peer's remote streams.
@@ -141,7 +164,12 @@ class Peer {
 
         channel.onmessage = (event) => {
             try {
-                const data = JSON.parse(event.data);
+                var data = event.data;
+                try{
+                    data = JSON.parse(data);
+                } catch(e){
+                    // If parsing fails, it might be a binary message (like a file chunk), so we keep it as is.
+                }
                 if (type === 'chat') {
                     this.handleIncomingChat(data);
                 } else if (type === 'status') {
@@ -161,6 +189,43 @@ class Peer {
             this.chatChannel.send(JSON.stringify({ sender: localState.displayName, text: text, timestamp: Date.now() }));
         }
     }
+
+    isMediaFile(file){
+        return file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/');
+    }
+    /* sends a media file message to the peer over the chat data channel.
+     *      params:
+     *          file - The File object representing the media file to send.
+     */
+    async sendChatMessageMedia(file){
+        if (this.chatChannel && this.chatChannel.readyState === 'open') {
+            /*if(!this.isMediaFile(file)) {
+                debugLog('info', 'file sharing not done yet');
+                return;
+            }*/
+            this.chatChannel.send(JSON.stringify({ sender: localState.displayName, kind: 'file-start', fileName: file.name, size: file.size, fileType: file.type }));
+            // we need to include the filename in the chunk sent over
+            const encoder = new TextEncoder();
+            const fileNameBytes = encoder.encode(file.name); // encode the string into bytes
+            const fileNameLength = fileNameBytes.length; // determine the length
+
+            var chunkIterator = chunkFile(file, 16 * 1024); // 16 KB chunks
+            
+            for await (const chunk of chunkIterator) {
+                const chunkBytes = new Uint8Array(chunk);
+                
+                const packet = new Uint8Array(1 + fileNameLength + chunkBytes.length); // 1 byte to indicate the length of the filename, fileNameLength bytes for the filename, and then the rest of the packet is the chunk data.
+                
+                packet[0] = fileNameLength; // set the first byte to the length of the filename             
+                packet.set(fileNameBytes, 1); // set the filename bytes starting from the second byte
+                packet.set(chunkBytes, 1 + fileNameLength); // set the chunk bytes after the filename bytes
+                
+                this.chatChannel.send(packet.buffer); // send the entire packet as an ArrayBuffer     
+            }
+            // send the file-end message after all chunks have been sent
+            this.chatChannel.send(JSON.stringify({ sender: localState.displayName, kind: 'file-end', fileName: file.name }));           
+        }
+    }
     /* sends a status update to the peer over the status data channel.
      *      params:
      *          statusObj - An object containing the status information to send (e.g., muted, deafened, screenSharing).
@@ -175,10 +240,45 @@ class Peer {
      *          data - An object containing the chat message data (sender, text, timestamp).
      */
     handleIncomingChat(data) {
-        const message = data.text.trim();
-        const timestamp = new Date(data.timestamp).toLocaleTimeString();
-        const sender = this.peerName;
-        handleNewMessage(sender, message, timestamp);
+        if(data.text){
+            const message = data.text.trim();
+            const timestamp = new Date(data.timestamp).toLocaleTimeString();
+            const sender = this.peerName;
+            handleNewMessage(sender, message, timestamp);
+        } else{
+            if(data.kind){
+                if(data.kind === 'file-start'){
+                    this.recievedFiles[data.fileName] = new FileMeta(data.fileName, data.size, data.fileType);
+                } else if(data.kind === 'file-end'){
+                    this.recievedFiles[data.fileName].recievedAllChunks = true;
+                    debugLog('info', "Recieved all chunks for file: ", data.fileName);
+                    const fileMeta = this.recievedFiles[data.fileName];
+                    const blob = new Blob(fileMeta.chunks, { type: fileMeta.fileType });
+                    const url = URL.createObjectURL(blob);
+                    const timestamp = new Date().toLocaleTimeString();
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileMeta.fileName;
+                    a.click();
+                }
+            } else{
+                const packetBuffer = data;
+                const packet = new Uint8Array(packetBuffer);
+
+                const fileNameLength = packet[0];
+
+                const decoder = new TextDecoder();
+                const fileNameBytes = packet.subarray(1, 1 + fileNameLength);
+                const extractedFileName = decoder.decode(fileNameBytes);
+                const actualChunkBuffer = packetBuffer.slice(1 + fileNameLength);
+
+                if (this.recievedFiles[extractedFileName]) {
+                    this.recievedFiles[extractedFileName].chunks.push(actualChunkBuffer);
+                } else {
+                    debugLog('warn', "Received file chunk for unknown file: ", extractedFileName);
+                }
+            }
+        }
     }
     /* handles an incoming status update from the peer and updates the UI accordingly.
      *      params:

@@ -23,6 +23,8 @@ const textChatSendButton = document.getElementById('text-chat-send');
 const textChatMessagesList = document.getElementById('text-chat-messages');
 const textChatContainer = document.getElementById('text-chat-container');
 const screensharingIndicator = document.getElementById('screensharing-indicator');
+const textChatUploadInput = document.getElementById('text-chat-upload-input');
+
 
 
 function getChatUserColor(username) {
@@ -334,6 +336,21 @@ export function handleNewMessage(sender, message,timestamp){
     }
 }
 
+export function handleNewImageMessage(sender, fileName, timestamp){
+    return;
+}
+
+export function handleNewFileMessage(sender, fileName, timestamp){
+    return;
+}
+
+export function handleNewVideoMessage(sender, fileName, timestamp){
+    return;
+}
+
+export function handleNewAudioMessage(sender, fileName, timestamp){
+    return;
+}
 
 leaveRoomButton.addEventListener('click', () => {
     playApplicationAudio(applicationAudio.goodbye);
@@ -417,13 +434,29 @@ textChatSendButton.addEventListener('click', async () => {
         // Encrypt message and then send it to the server for logging
         if (ROOM_KEY) {
             await encryptMessage(message, ROOM_KEY).then(encryptedMessage => {
-                const logMessage = JSON.stringify({ type: 'log', message: encryptedMessage.encrypted, iv: encryptedMessage.iv, timestamp: Date.now(), roomId: localState.roomId, sessionId: localState.sessionId });
+                const logMessage = JSON.stringify({ type: 'log', message: encryptedMessage.encrypted, iv: encryptedMessage.iv, timestamp: Date.now(), roomId: localState.roomId, sessionId: localState.sessionId, contentType: 'text' });
                 localState.socket.send(logMessage);
             }).catch(err => {
                 console.error('Error encrypting message for logging:', err);
             });
         } else {
             debugLog('warn', 'ROOM_KEY is not available. Message will not be logged.');
+        }
+    }
+});
+
+textChatUploadInput.addEventListener('change', async (event) => {
+    const files = event.target.files;
+    const timestamp = new Date().toLocaleTimeString();
+    if (files.length > 0) {
+        for (const file of files) {
+            debugLog('info', 'Uploading file:', file.name, 'Type:', file.type, 'Size:', file.size, 'Timestamp:', timestamp);
+            if(file.size > 50 * 1024 * 1024) { // 50 MB limit
+                alert(`File ${file.name} is too large. Please limit to 50 MB. Please use large file upload service that I have conviently not made yet.`);
+            }
+            for (const peerName in localState.peerConnections) {
+                localState.peerConnections[peerName].sendChatMessageMedia(file);
+            }
         }
     }
 });

@@ -135,7 +135,8 @@ function createDeleteRoomControls(ownRoom, sessionId) {
     openButton.appendChild(openIcon);
 
     const dialog = document.createElement('dialog');
-    dialog.className = 'bg-skye-gray-dark text-white ml-5';
+    dialog.className = 'bg-skye-gray-dark text-white mx-auto';
+    dialog.style.margin = 'auto';
 
     const title = document.createElement('h2');
     title.className = 'text-[16px] mb-2.5';

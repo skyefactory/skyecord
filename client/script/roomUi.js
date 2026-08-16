@@ -201,6 +201,7 @@ function bindDialogControls(root, openSelector, dialogSelector, closeSelector) {
     }
 
     openButton.addEventListener('click', () => {
+        dialog.style.margin = 'auto';
         dialog.showModal();
     });
 

@@ -6,6 +6,11 @@
         <meta name="description" content="wow little jim, we communicatin over the innanet">
         <link rel="stylesheet" href="output.css">
         <link rel="manifest" href="manifest.json">
+        <style>
+            dialog {
+                margin: auto;
+            }
+        </style>
         <title>skyecord</title>
     </head>
 
@@ -93,7 +98,7 @@
 
         <div id="self-controls" style="display:none;">
             <button class="self-controls-open p-1 text-[12px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover "><img src="./svgicons/settings.svg" alt="Self Controls" style="width:100%; height: 75%;"></button>
-            <dialog id="self-controls-dialog" class="bg-skye-gray-dark text-white ml-5 ">
+            <dialog id="self-controls-dialog" class="bg-skye-gray-dark text-white mx-auto">
                 <h2 class="text-[16px] mb-2.5">user settings</h2>
                 <label for="nickname-input" class="text-[14px] mb-2.5">Nickname:</label>
                 <input type="text" placeholder="Nickname" class="nickname-input p-2.5 mb-2.5 w-full bg-skye-gray-light text-white rounded">
@@ -106,7 +111,7 @@
 
         <div id="other-controls" style="display:none;">
             <button class="other-controls-open p-1 text-[12px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover "><img src="./svgicons/settings.svg" alt="Other Controls" style="width:100%; height: 75%;"></button>
-            <dialog id="other-controls-dialog" class="bg-skye-gray-dark text-white ml-5 ">
+            <dialog id="other-controls-dialog" class="bg-skye-gray-dark text-white mx-auto">
                 <h2 class="text-[16px] mb-2.5">user settings</h2>
 
                 <label for="user-volume" class="text-[14px] mb-2.5">User Volume:</label>

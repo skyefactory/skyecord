@@ -48,10 +48,11 @@
                     Join Room
                 </button>
                 <br><br>
-                <button id="modify-account-btn" type="submit"
-                    class="w-[90%] p-2.5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
-                    Settings (wip!!!)
-                </button>
+                <input type="file" id="skyecord-file-input" class="hidden">
+                <label for="skyecord-file-input"
+                    class="w-[90%] p-2.5 text-[16px] bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover text-center">
+                    Import Room (Skyecord File)
+                </label>
             </form>
 
 
@@ -84,7 +85,7 @@
                     class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-input text-white box-border"
                     placeholder="Room Secret">
                 <br><br>
-                <button type="submit"
+                <button type="submit" id="join-form-submit"
                     class="w-[90%] p-2.5 text-[16px] mb-4 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">
                     Join Room
                 </button>
@@ -140,7 +141,7 @@
         <br>
 
         <footer class="text-center text-white text-[12px] mt-4">
-            <p>version 0.1.7</p>
+            <p>version 0.1.8</p>
             <p>last updated: 2026-08-15</p>
         </footer>
 

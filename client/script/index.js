@@ -301,6 +301,18 @@ function joinRoom(roomId) {
     setNewJoinVisibility(false);
 }
 
+function joinRoomWithSecret(roomId, roomSecret) {
+    const nickname = getStoredValue('nickname');
+    joinForm.classList.remove("hidden");
+    document.getElementById('room-id').value = roomId;
+    document.getElementById('room-secret').value = roomSecret;
+    document.getElementById('display-name').value = nickname || '';
+    joinForm.requestSubmit();
+    newRoomForm.classList.add("hidden");
+    quickJoin.classList.add("hidden");
+    setNewJoinVisibility(false);
+}
+
 
 /* creates a new room with the specified name after validating the input and checking user authentication.
  *      params:
@@ -457,14 +469,6 @@ document.getElementById('join-room-btn').addEventListener('click', async (event)
     joinForm.classList.remove("hidden");
 });
 
-document.getElementById('modify-account-btn').addEventListener('click', async (event) => {
-    setErrorMessage('');
-    event.preventDefault();
-    setErrorMessage('I haven\'t finished this yet :P');
-    return;
-});
-
-
 joinForm.addEventListener('submit', async (event) => {
     setErrorMessage('');
     event.preventDefault();
@@ -509,5 +513,26 @@ window.addEventListener('DOMContentLoaded', async () => {
         setNewJoinVisibility(false);
         joinForm.classList.add("hidden");
         quickJoin.classList.add("hidden");
+    }
+});
+
+document.getElementById('skyecord-file-input').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+        setErrorMessage('No file selected.');
+        return;
+    }
+    if(file.name.endsWith('.skyecord')){
+        try {
+            const fileContent = await file.text();
+            const roomData = JSON.parse(fileContent);
+            if (roomData.roomId && roomData.roomSecret) {
+                joinRoomWithSecret(roomData.roomId, roomData.roomSecret);
+            }
+        }   
+        catch(e){
+            console.error('Error reading or parsing the file:', e);
+            setErrorMessage('Failed to read or parse the file. Please ensure it is a valid Skyecord file.');
+        }
     }
 });

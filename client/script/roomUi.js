@@ -1,5 +1,5 @@
 import {debugLog} from './debugLogger.js';
-import {localState, setStoredValue, isElectron} from './roomMisc.js';
+import {localState, setStoredValue, isElectron, isMediaFile, isAudio,isImage,isVideo} from './roomMisc.js';
 import {ROOM_KEY, encryptMessage} from './roomAuth.js';
 import {startWindowShare, selectWindowSourceUI, displayPeerScreenShare, stopWindowShare} from './roomScreenShare.js';
 const applicationAudio = {
@@ -38,33 +38,98 @@ function getChatUserColor(username) {
     return `hsl(${hue} 85% 72%)`;
 }
 
-function createChatMessageItem(sender, message, timestamp, colorKey = sender) {
-    const messageItem = document.createElement('li');
+function createChatMessageItem(sender, message, timestamp, colorKey = sender, type = 'text') {
+    switch(type){
+        case 'text':{
+            const messageItem = document.createElement('li');
 
-    messageItem.className =
-        'p-1 bg-skye-gray-input text-white text-[12px] min-w-0 max-w-full overflow-hidden';
+            messageItem.className =
+                'p-1 bg-skye-gray-input text-white text-[12px] min-w-0 max-w-full overflow-hidden';
 
-    const senderLabel = document.createElement('b');
-    senderLabel.textContent = `${sender}:`;
-    senderLabel.style.color = getChatUserColor(colorKey);
+            const senderLabel = document.createElement('b');
+            senderLabel.textContent = `${sender}:`;
+            senderLabel.style.color = getChatUserColor(colorKey);
 
-    const messageBody = document.createElement('span');
+            const messageBody = document.createElement('span');
 
-    messageBody.style.overflowWrap = 'anywhere';
-    messageBody.style.wordBreak = 'break-word';
-    messageBody.style.whiteSpace = 'normal';
+            messageBody.style.overflowWrap = 'anywhere';
+            messageBody.style.wordBreak = 'break-word';
+            messageBody.style.whiteSpace = 'normal';
 
-    messageBody.textContent = ` ${message} `;
+            messageBody.textContent = ` ${message} `;
 
-    const timestampLabel = document.createElement('span');
-    timestampLabel.className = 'text-[10px] text-gray-400';
-    timestampLabel.textContent = `(${timestamp})`;
+            const timestampLabel = document.createElement('span');
+            timestampLabel.className = 'text-[10px] text-gray-400';
+            timestampLabel.textContent = `(${timestamp})`;
 
-    messageItem.append(senderLabel, messageBody, timestampLabel);
+            messageItem.append(senderLabel, messageBody, timestampLabel);
 
-    styleChatMessageItem(messageItem);
+            styleChatMessageItem(messageItem);
 
-    return messageItem;
+            return messageItem;
+        }
+        case 'image':{
+            const messageItem = document.createElement('li');
+            messageItem.className =
+                'p-1 bg-skye-gray-input text-white text-[12px] min-w-0 max-w-full overflow-hidden';
+
+            const senderLabel = document.createElement('b');
+            senderLabel.textContent = `${sender}:`;
+            senderLabel.style.color = getChatUserColor(colorKey);
+
+            const url = message.url;
+            const imageElement = document.createElement('img');
+            imageElement.src = url;
+            imageElement.alt = 'Image shared by ' + sender;
+            imageElement.className = 'max-w-full max-h-full block';
+
+            const timestampLabel = document.createElement('span');
+            timestampLabel.className = 'text-[10px] text-gray-400';
+            timestampLabel.textContent = `(${timestamp})`;
+
+            messageItem.append(senderLabel, imageElement, timestampLabel);
+
+            styleChatMessageItem(messageItem);
+
+            return messageItem;
+        }
+        case 'video':{
+            const messageItem = document.createElement('li');
+            messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px] min-w-0 max-w-full overflow-hidden';
+            const senderLabel = document.createElement('b');   
+            senderLabel.textContent = `${sender}:`;
+            senderLabel.style.color = getChatUserColor(colorKey);
+            const url = message.url;
+            const videoElement = document.createElement('video');
+            videoElement.src = url;
+            videoElement.controls = true;
+            videoElement.className = 'max-w-full max-h-full block';
+            const timestampLabel = document.createElement('span');
+            timestampLabel.className = 'text-[10px] text-gray-400';
+            timestampLabel.textContent = `(${timestamp})`;
+            messageItem.append(senderLabel, videoElement, timestampLabel);
+            styleChatMessageItem(messageItem);
+            return messageItem;
+        }
+        case 'audio':{
+            const messageItem = document.createElement('li');
+            messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px] min-w-0 max-w-full overflow-hidden';
+            const senderLabel = document.createElement('b');   
+            senderLabel.textContent = `${sender}:`;
+            senderLabel.style.color = getChatUserColor(colorKey);
+            const url = message.url;
+            const audioElement = document.createElement('audio');
+            audioElement.src = url;
+            audioElement.controls = true;
+            const timestampLabel = document.createElement('span');
+            timestampLabel.className = 'text-[10px] text-gray-400';
+            timestampLabel.textContent = `(${timestamp})`;
+            messageItem.append(senderLabel, audioElement, timestampLabel);
+            styleChatMessageItem(messageItem);
+            return messageItem;
+        }
+    }
+
 }
 
 function styleChatMessageItem(messageItem) {
@@ -336,19 +401,34 @@ export function handleNewMessage(sender, message,timestamp){
     }
 }
 
-export function handleNewImageMessage(sender, fileName, timestamp){
+export function handleNewImageMessage(sender, fileMeta, fileURL, timestamp){
+    if(fileMeta && fileURL){
+        const message = { url: fileURL, meta: fileMeta };
+        textChatMessagesList.appendChild(createChatMessageItem(sender, message, timestamp, sender, 'image'));
+        textChatContainer.scrollTop = textChatContainer.scrollHeight;
+    }
     return;
 }
 
-export function handleNewFileMessage(sender, fileName, timestamp){
+export function handleNewFileMessage(sender,  fileMeta, fileURL, timestamp){
     return;
 }
 
-export function handleNewVideoMessage(sender, fileName, timestamp){
+export function handleNewVideoMessage(sender,  fileMeta, fileURL, timestamp){
+    if(fileMeta && fileURL){
+        const message = { url: fileURL, meta: fileMeta };
+        textChatMessagesList.appendChild(createChatMessageItem(sender, message, timestamp, sender, 'video'));
+        textChatContainer.scrollTop = textChatContainer.scrollHeight;
+    }
     return;
 }
 
-export function handleNewAudioMessage(sender, fileName, timestamp){
+export function handleNewAudioMessage(sender,  fileMeta, fileURL, timestamp){
+    if(fileMeta && fileURL){
+        const message = { url: fileURL, meta: fileMeta };
+        textChatMessagesList.appendChild(createChatMessageItem(sender, message, timestamp, sender, 'audio'));
+        textChatContainer.scrollTop = textChatContainer.scrollHeight;
+    }
     return;
 }
 
@@ -456,6 +536,15 @@ textChatUploadInput.addEventListener('change', async (event) => {
             }
             for (const peerName in localState.peerConnections) {
                 localState.peerConnections[peerName].sendChatMessageMedia(file);
+            }
+            if(isMediaFile(file.type)){
+                if(isImage(file.type)){
+                    handleNewImageMessage('You', { name: file.name, type: file.type, size: file.size }, URL.createObjectURL(file), timestamp);
+                } else if(isVideo(file.type)){
+                    handleNewVideoMessage('You', { name: file.name, type: file.type, size: file.size }, URL.createObjectURL(file), timestamp);
+                } else if(isAudio(file.type)){
+                    handleNewAudioMessage('You', { name: file.name, type: file.type, size: file.size }, URL.createObjectURL(file), timestamp);
+                }
             }
         }
     }

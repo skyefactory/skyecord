@@ -1,13 +1,20 @@
-import {localState, isAudioSilent, startVoiceDetectionLocal, localOnSilent, localOnSpeaking} from './roomMisc.js';
+import {localState, isAudioSilent, startVoiceDetectionLocal, localOnSilent, localOnSpeaking, isMediaFile, isImage, isAudio, isVideo} from './roomMisc.js';
 import {debugLog} from './debugLogger.js';
 import {handleNewMessage, updatePeerStatus, updatePeerScreenShareButton, handleNewImageMessage, handleNewVideoMessage, handleNewAudioMessage} from './roomUi.js';
+
+const doNoiseSupression = true;
+
 const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' }
     ]
 };
 const constraints = {
-    audio: true,
+    audio: {
+        echoCancellation: true,
+        noiseSuppression: false,
+        autoGainControl: true
+    },
     video: false
 };
 
@@ -30,6 +37,7 @@ class FileMeta{
         this.recievedAllChunks = false;
     }
 }
+
 
 
 /* class that contains information about the remote streams from a peer.*/
@@ -190,16 +198,15 @@ class Peer {
         }
     }
 
-    isMediaFile(file){
-        return file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/');
-    }
+
     /* sends a media file message to the peer over the chat data channel.
      *      params:
      *          file - The File object representing the media file to send.
      */
     async sendChatMessageMedia(file){
         if (this.chatChannel && this.chatChannel.readyState === 'open') {
-            /*if(!this.isMediaFile(file)) {
+            /*
+            if(!isMediaFile(file.type)) {
                 debugLog('info', 'file sharing not done yet');
                 return;
             }*/
@@ -256,10 +263,23 @@ class Peer {
                     const blob = new Blob(fileMeta.chunks, { type: fileMeta.fileType });
                     const url = URL.createObjectURL(blob);
                     const timestamp = new Date().toLocaleTimeString();
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileMeta.fileName;
-                    a.click();
+                    if(isMediaFile(fileMeta.fileType)) {
+                        if(isImage(fileMeta.fileType)){
+                            handleNewImageMessage(this.peerName, fileMeta, url, timestamp);
+                        }
+                        else if(isVideo(fileMeta.fileType)){
+                            handleNewVideoMessage(this.peerName, fileMeta, url, timestamp);
+                        } 
+                        else if(isAudio(fileMeta.fileType)){
+                            handleNewAudioMessage(this.peerName, fileMeta, url, timestamp);
+                        }
+                    }else{
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileMeta.fileName;
+                        a.click();
+                    }
+
                 }
             } else{
                 const packetBuffer = data;
@@ -300,12 +320,31 @@ class Peer {
             if (localState.localMicrophoneStream === null) {
                 localState.localMicrophoneStream = await navigator.mediaDevices.getUserMedia(constraints);
             }
+            if(doNoiseSupression && localState.localMicrophoneStream) {
+                const audioCtx = new AudioContext({sampleRate: 48000});
+                await audioCtx.audioWorklet.addModule('./script/worklet/NoiseSuppressorWorklet.js');
+                const sourceNode = audioCtx.createMediaStreamSource(localState.localMicrophoneStream);
 
-            for (const track of localState.localMicrophoneStream.getTracks()) {
-                this.pc.addTrack(track, localState.localMicrophoneStream);
-                localState.socket.send(JSON.stringify({type: 'track-info' , track: track, stream: localState.localMicrophoneStream, roomId: localState.roomId, trackId: track.id, trackType: `microphoneAudio`, target: this.peerName}));
+                const denoiseNode = new AudioWorkletNode(audioCtx, "NoiseSuppressorWorklet", {
+                    channelCount: 1,
+                    numberOfInputs: 1,
+                    numberOfOutputs: 1
+                });
+                const destinationNode = audioCtx.createMediaStreamDestination();
+                sourceNode.connect(denoiseNode);
+                denoiseNode.connect(destinationNode);
+                const [cleanAudioTrack] = destinationNode.stream.getAudioTracks();
+                this.pc.addTrack(cleanAudioTrack, destinationNode.stream);
+                localState.localMicrophoneStream = destinationNode.stream;
+                localState.socket.send(JSON.stringify({type: 'track-info' , track: cleanAudioTrack, stream: destinationNode.stream, roomId: localState.roomId, trackId: cleanAudioTrack.id, trackType: `microphoneAudio`, target: this.peerName}));
+                startVoiceDetectionLocal(localState.localMicrophoneStream, localOnSpeaking, localOnSilent);
+            } else if(localState.localMicrophoneStream) {
+                const [micTrack] = localState.localMicrophoneStream.getAudioTracks();
+                this.pc.addTrack(micTrack, localState.localMicrophoneStream);
+                localState.socket.send(JSON.stringify({type: 'track-info' , track: micTrack, stream: localState.localMicrophoneStream, roomId: localState.roomId, trackId: micTrack.id, trackType: `microphoneAudio`, target: this.peerName}));
+                startVoiceDetectionLocal(localState.localMicrophoneStream, localOnSpeaking, localOnSilent);
             }
-            startVoiceDetectionLocal(localState.localMicrophoneStream, localOnSpeaking, localOnSilent);
+
 
         } catch (err) {
             alert('App was unable to access your microphone. Check if your browser is requesting permissions or if you have it blocked.')

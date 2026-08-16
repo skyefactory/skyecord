@@ -141,3 +141,16 @@ export function localOnSilent(){
 }
 
 
+export function isMediaFile(fileType){
+    return fileType.startsWith('image/') || fileType.startsWith('video/') || fileType.startsWith('audio/');
+}
+
+export function  isImage(fileType){
+    return fileType.startsWith('image/');
+}
+export function  isAudio(fileType){
+    return fileType.startsWith('audio/');
+}
+export function  isVideo(fileType){
+    return fileType.startsWith('video/');
+}

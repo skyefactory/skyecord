@@ -1,7 +1,8 @@
 import {debugLog} from './debugLogger.js';
 import {localState, setStoredValue, isElectron, isMediaFile, isAudio,isImage,isVideo} from './roomMisc.js';
-import {ROOM_KEY, encryptMessage} from './roomAuth.js';
+import {ROOM_KEY, encryptMessage, encryptData} from './roomAuth.js';
 import {startWindowShare, selectWindowSourceUI, displayPeerScreenShare, stopWindowShare} from './roomScreenShare.js';
+import {chunkFile} from './roomPeer.js';
 const applicationAudio = {
     joined: isElectron ? './audio/joined.wav' : '../audio/joined.wav',
     left: isElectron ? './audio/left.wav' : '../audio/left.wav',
@@ -39,6 +40,7 @@ function getChatUserColor(username) {
 }
 
 function createChatMessageItem(sender, message, timestamp, colorKey = sender, type = 'text') {
+    console.log('createChatMessageItem called with sender:', sender, 'message:', message, 'timestamp:', timestamp, 'colorKey:', colorKey, 'type:', type);
     switch(type){
         case 'text':{
             const messageItem = document.createElement('li');
@@ -139,12 +141,56 @@ function styleChatMessageItem(messageItem) {
     });
 }
 
-export function loadMessages(messages){
-    messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    for (const msg of messages) {
-        textChatMessagesList.appendChild(createChatMessageItem(msg.username, msg.message, msg.timestamp));
+export function loadMessages(messages, type){
+    console.log('messages', messages);
+    const textMessages = messages.textMessages || [];
+    const mediaMessages = messages.mediaMessages || [];
+    // sort messages by timestamp
+    textMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    mediaMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    // combine text and media messages into a single array
+    const allMessages = [...textMessages, ...mediaMessages];
+    // sort all messages by timestamp
+    allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    for (const msg of allMessages) {
+        console.log('msg', msg);
+        console.log('msg.blobUrl', msg.blobUrl);
+        if(msg.blobUrl){
+            console.log('hi');
+            if(isImage(msg.filetype)){
+                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.blobUrl, meta: { name: msg.fileName } }, msg.timestamp, msg.username, 'image'));
+            } else if(isVideo(msg.filetype)){
+                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.blobUrl, meta: { name: msg.fileName } }, msg.timestamp, msg.username, 'video'));
+            } else if(isAudio(msg.filetype)){
+                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.blobUrl, meta: { name: msg.fileName } }, msg.timestamp, msg.username, 'audio'));
+            }
+        }
+
     }
-    textChatContainer.scrollTop = textChatContainer.scrollHeight;
+    return;
+
+
+    if(type === 'text'){
+        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        for (const msg of messages) {
+            textChatMessagesList.appendChild(createChatMessageItem(msg.username, msg.message, msg.timestamp));
+        }
+        textChatContainer.scrollTop = textChatContainer.scrollHeight;
+    } else if(type === 'media'){
+        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        for (const msg of messages) {
+            const fileType = msg.message.split('.').pop().toLowerCase();
+            if(isImage(fileType)){
+                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.message, meta: { name: msg.message.split('/').pop(), type: 'image/' + fileType } }, msg.timestamp, msg.username, 'image'));
+            } else if(isVideo(fileType)){
+                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.message, meta: { name: msg.message.split('/').pop(), type: 'video/' + fileType } }, msg.timestamp, msg.username, 'video'));
+            } else if(isAudio(fileType)){
+                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.message, meta: { name: msg.message.split('/').pop(), type: 'audio/' + fileType } }, msg.timestamp, msg.username, 'audio'));
+            }
+        }
+        textChatContainer.scrollTop = textChatContainer.scrollHeight;
+    }
 }
 
 export function updateRoomNameID(roomname, roomid){
@@ -532,9 +578,6 @@ textChatUploadInput.addEventListener('change', async (event) => {
     if (files.length > 0) {
         for (const file of files) {
             debugLog('info', 'Uploading file:', file.name, 'Type:', file.type, 'Size:', file.size, 'Timestamp:', timestamp);
-            if(file.size > 50 * 1024 * 1024) { // 50 MB limit
-                alert(`File ${file.name} is too large. Please limit to 50 MB. Please use large file upload service that I have conviently not made yet.`);
-            }
             for (const peerName in localState.peerConnections) {
                 localState.peerConnections[peerName].sendChatMessageMedia(file);
             }
@@ -547,6 +590,48 @@ textChatUploadInput.addEventListener('change', async (event) => {
                     handleNewAudioMessage('You', { name: file.name, type: file.type, size: file.size }, URL.createObjectURL(file), timestamp);
                 }
             }
+
+            localState.socket.send(JSON.stringify({type: 'logMedia', kind: 'file-start',fileName: file.name, fileSize: file.size, fileType: file.type, roomId: localState.roomId, sessionId: localState.sessionId, contentType: 'media'}));
+            // we need to include the filename in the chunk sent over
+            const fileData = await file.arrayBuffer();
+            const { encrypted, iv } = await encryptData(
+                fileData,
+                ROOM_KEY
+            );
+            const encoder = new TextEncoder();
+            const fileNameBytes = encoder.encode(file.name); // encode the string into bytes
+            const fileNameLength = fileNameBytes.length; // determine the length
+            var chunkIterator = chunkFile(file, 16 * 1024); // 16 KB chunks
+
+
+            const chunkSize = 16 * 1024;
+
+            for (let offset = 0; offset < encrypted.length; offset += chunkSize) {
+                const chunk = encrypted.slice(
+                    offset,
+                    Math.min(offset + chunkSize, encrypted.length)
+                );
+
+                const encryptedPacket = new Uint8Array(
+                    1 + fileNameLength + chunk.length
+                );
+
+                encryptedPacket[0] = fileNameLength;
+                encryptedPacket.set(fileNameBytes, 1);
+                encryptedPacket.set(chunk, 1 + fileNameLength);
+
+                localState.socket.send(encryptedPacket.buffer);
+            }
+            localState.socket.send(JSON.stringify({
+                type: 'logMedia',
+                kind: 'file-end',
+                fileName: file.name,
+                timestamp: Date.now(),
+                roomId: localState.roomId,
+                sessionId: localState.sessionId,
+                contentType: 'media',
+                iv: Array.from(iv)
+            }));
         }
     }
 });

@@ -1,10 +1,21 @@
 import {debugLog} from './debugLogger.js';
 import {isElectron, localState, stopVoiceDetectionLocal} from './roomMisc.js';
 import {updateRoomNameID, loadMessages, updateUserList} from './roomUi.js';
-import {initializeRoomKey, decryptMessage} from './roomAuth.js'; 
+import {initializeRoomKey, decryptMessage, decryptData} from './roomAuth.js'; 
 import {updatePeers} from './roomPeer.js';   
 debugLog('info', 'room.js loaded');
 debugLog('info', `isElectron: ${isElectron}`);
+
+function base64ToUint8Array(base64) {
+    const binary = atob(base64);
+
+    return Uint8Array.from(
+        binary,
+        c => c.charCodeAt(0)
+    );
+}
+
+const fileServ = 'https://file.skyefactory.com';
 
 
 localState.displayName = new URLSearchParams(window.location.search).get('name');
@@ -38,20 +49,71 @@ localState.socket.addEventListener('message', async (event) => {
         case 'joined':
         {
             updateRoomNameID(data.roomName, localState.roomId);
-            await initializeRoomKey(data.saltBytes);
-            const messagesLog = data.logs;
-            const messages = [];
-            if (messagesLog && messagesLog.length > 0) {
-                for (const logEntry of messagesLog) {
+            await initializeRoomKey(base64ToUint8Array(data.saltBytes));
+
+            const textChatLogs = data.logs.textChatRows;
+            const mediaLogs = data.logs.mediaRows;
+            const textMessages = [];
+            if (textChatLogs && textChatLogs.length > 0) {
+                for (const logEntry of textChatLogs) {
                     const ciphertext = new Uint8Array(logEntry.ciphertext.data);
                     const iv = new Uint8Array(logEntry.iv.data);
                     const timestamp = new Date(logEntry.created).toLocaleTimeString();
                     const plaintext = await decryptMessage(ciphertext, iv);
                     const username = logEntry.username;
-                    messages.push({ username, message: plaintext, timestamp });
+                    textMessages.push({ username, message: plaintext, timestamp });
                 }
             }
-            loadMessages(messages);
+            const mediaMessages = [];
+            if (mediaLogs && mediaLogs.length > 0) {
+                for (const logEntry of mediaLogs) {
+                    const filepath = logEntry.filepath;
+                    const filetype = logEntry.filetype;
+                    const iv = new Uint8Array(logEntry.iv.data);
+                    const timestamp = new Date(logEntry.created).toLocaleTimeString();
+                    const username = logEntry.username;
+                    mediaMessages.push({ username, message: filepath, timestamp, iv, filetype });
+                }
+            }
+            // fetch the media files from the server.
+            for (const mediaMessage of mediaMessages) {
+                try {
+                    const response = await fetch(
+                        `${fileServ}${mediaMessage.message}?roomId=${localState.roomId}&sessionId=${localState.sessionId}`
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const blob = await response.blob();
+                    const encryptedData = await blob.arrayBuffer();
+
+                    const decryptedData = await decryptData(
+                        encryptedData,
+                        mediaMessage.iv
+                    );
+
+                    const decryptedBlob = new Blob(
+                        [decryptedData],
+                        { type: mediaMessage.filetype }
+                    );
+
+                    mediaMessage.blobUrl =
+                        URL.createObjectURL(decryptedBlob);
+
+                    mediaMessage.fileName =
+                        mediaMessage.message.split('/').pop();
+
+                } catch (error) {
+                    console.error(
+                        `Error processing media ${mediaMessage.message}:`,
+                        error
+                    );
+                }
+            }
+
+            loadMessages({ textMessages, mediaMessages });
             updateUserList(data.users, data.numusers);
             await updatePeers(data.users);
             break;

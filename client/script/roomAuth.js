@@ -4,6 +4,9 @@ var secretString = null;
 var secretBytes = null;
 // get the secret string
 
+
+
+
 const urlParams = new URLSearchParams(window.location.search);
 if(urlParams.has('secret')) {
     secretString = urlParams.get('secret');
@@ -50,23 +53,28 @@ export async function initializeRoomKey(salt){
  *          A Promise that resolves to the derived key.
  */
 
-export async function deriveKey(secretBytes, saltBytes){
-    saltBytes = Uint8Array.from(Object.values(saltBytes));
+export async function deriveKey(secretBytes, saltBytes) {
+    console.log(saltBytes);
+    if (saltBytes?.type === "Buffer" && Array.isArray(saltBytes.data)) {
+        saltBytes = new Uint8Array(saltBytes.data);
+    } else if (!(saltBytes instanceof Uint8Array)) {
+        saltBytes = new Uint8Array(saltBytes);
+    }
+
     const key = await crypto.subtle.importKey(
         "raw",
         secretBytes,
         "HKDF",
         false,
-        ["deriveKey"]);
+        ["deriveKey"]
+    );
 
     return await crypto.subtle.deriveKey(
         {
             name: "HKDF",
             hash: "SHA-256",
             salt: saltBytes,
-            info: new TextEncoder().encode(
-                "skyecord-room-key"
-            )
+            info: new TextEncoder().encode("skyecord-room-key")
         },
         key,
         {
@@ -75,7 +83,7 @@ export async function deriveKey(secretBytes, saltBytes){
         },
         false,
         ["encrypt", "decrypt"]
-    ); 
+    );
 }
 
 /* encrypts the provided message using AES-GCM with the derived room key.
@@ -117,7 +125,7 @@ export async function encryptData(data, key = ROOM_KEY) {
     const encrypted = await crypto.subtle.encrypt(
         {
             name: "AES-GCM",
-            iv: iv
+            iv
         },
         key,
         data
@@ -125,7 +133,7 @@ export async function encryptData(data, key = ROOM_KEY) {
 
     return {
         encrypted: new Uint8Array(encrypted),
-        iv: iv
+        iv
     };
 }
 

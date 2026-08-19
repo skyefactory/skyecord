@@ -1,7 +1,7 @@
 import {localState, isAudioSilent, startVoiceDetectionLocal, localOnSilent, localOnSpeaking, isMediaFile, isImage, isAudio, isVideo} from './roomMisc.js';
 import {debugLog} from './debugLogger.js';
 import {handleNewMessage, updatePeerStatus, updatePeerScreenShareButton, handleNewImageMessage, handleNewVideoMessage, handleNewAudioMessage} from './roomUi.js';
-
+import {encryptData} from './roomAuth.js';
 const doNoiseSupression = true;
 
 const configuration = {
@@ -18,7 +18,7 @@ const constraints = {
     video: false
 };
 
-async function* chunkFile(file, chunkSize){
+export async function* chunkFile(file, chunkSize){
     let offset = 0;
     while (offset < file.size) {
         const blob = file.slice(offset, offset + chunkSize);
@@ -205,11 +205,11 @@ class Peer {
      */
     async sendChatMessageMedia(file){
         if (this.chatChannel && this.chatChannel.readyState === 'open') {
-            /*
-            if(!isMediaFile(file.type)) {
-                debugLog('info', 'file sharing not done yet');
+            if(!isMediaFile(file.type) || file.size > 50 * 1024 * 1024) { // if the file is not a media file or if it is larger than 50mb
+                alert('please use large file upload service and share the link in chat.');
                 return;
-            }*/
+            }
+            
             this.chatChannel.send(JSON.stringify({ sender: localState.displayName, kind: 'file-start', fileName: file.name, size: file.size, fileType: file.type }));
             // we need to include the filename in the chunk sent over
             const encoder = new TextEncoder();
@@ -217,7 +217,6 @@ class Peer {
             const fileNameLength = fileNameBytes.length; // determine the length
 
             var chunkIterator = chunkFile(file, 16 * 1024); // 16 KB chunks
-            
             for await (const chunk of chunkIterator) {
                 const chunkBytes = new Uint8Array(chunk);
                 
@@ -227,10 +226,10 @@ class Peer {
                 packet.set(fileNameBytes, 1); // set the filename bytes starting from the second byte
                 packet.set(chunkBytes, 1 + fileNameLength); // set the chunk bytes after the filename bytes
                 
-                this.chatChannel.send(packet.buffer); // send the entire packet as an ArrayBuffer     
+                this.chatChannel.send(packet.buffer); // send the entire packet as an ArrayBuffer   
             }
             // send the file-end message after all chunks have been sent
-            this.chatChannel.send(JSON.stringify({ sender: localState.displayName, kind: 'file-end', fileName: file.name }));           
+            this.chatChannel.send(JSON.stringify({ sender: localState.displayName, kind: 'file-end', fileName: file.name }));                  
         }
     }
     /* sends a status update to the peer over the status data channel.

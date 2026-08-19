@@ -534,5 +534,7 @@ document.getElementById('skyecord-file-input').addEventListener('change', async 
             console.error('Error reading or parsing the file:', e);
             setErrorMessage('Failed to read or parse the file. Please ensure it is a valid Skyecord file.');
         }
+    } else{
+        setErrorMessage('Invalid file type. Please select a .skyecord file.');
     }
 });

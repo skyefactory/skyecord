@@ -1,6 +1,6 @@
 import {debugLog} from './debugLogger.js';
 import {isElectron, localState, stopVoiceDetectionLocal} from './roomMisc.js';
-import {updateRoomNameID, loadMessages, updateUserList} from './roomUi.js';
+import {updateRoomNameID, loadMessages, updateUserList, handleNewFileMessage} from './roomUi.js';
 import {initializeRoomKey, decryptMessage, decryptData} from './roomAuth.js'; 
 import {updatePeers} from './roomPeer.js';   
 debugLog('info', 'room.js loaded');
@@ -53,28 +53,44 @@ localState.socket.addEventListener('message', async (event) => {
 
             const textChatLogs = data.logs.textChatRows;
             const mediaLogs = data.logs.mediaRows;
+            const fileLogs = data.logs.fileRows;
             const textMessages = [];
             if (textChatLogs && textChatLogs.length > 0) {
                 for (const logEntry of textChatLogs) {
                     const ciphertext = new Uint8Array(logEntry.ciphertext.data);
                     const iv = new Uint8Array(logEntry.iv.data);
-                    const timestamp = new Date(logEntry.created).toLocaleTimeString();
+                    const timestamp = logEntry.created
                     const plaintext = await decryptMessage(ciphertext, iv);
                     const username = logEntry.username;
                     textMessages.push({ username, message: plaintext, timestamp });
                 }
             }
+            console.log('Text messages:', textMessages);
             const mediaMessages = [];
             if (mediaLogs && mediaLogs.length > 0) {
                 for (const logEntry of mediaLogs) {
                     const filepath = logEntry.filepath;
                     const filetype = logEntry.filetype;
                     const iv = new Uint8Array(logEntry.iv.data);
-                    const timestamp = new Date(logEntry.created).toLocaleTimeString();
+                    const timestamp = logEntry.created;
                     const username = logEntry.username;
                     mediaMessages.push({ username, message: filepath, timestamp, iv, filetype });
                 }
             }
+            const fileMessages = [];
+            if (fileLogs && fileLogs.length > 0) {
+                for (const logEntry of fileLogs) {
+                    const filepath = logEntry.filepath;
+                    const fileurl = 'https://file.skyefactory.com/' + filepath + '?roomId=' + localState.roomId + '&sessionId=' + localState.sessionId;
+                    const username = logEntry.username;
+                    const filename = filepath.split('/').pop();
+                    const fileType = logEntry.filetype;
+                    const iv = logEntry.iv;
+                    const timestamp = logEntry.created;
+                    fileMessages.push({ username, message: { name: filename, type: fileType, iv: iv }, url: fileurl, timestamp });
+                }
+            }
+
             // fetch the media files from the server.
             for (const mediaMessage of mediaMessages) {
                 try {
@@ -113,7 +129,7 @@ localState.socket.addEventListener('message', async (event) => {
                 }
             }
 
-            loadMessages({ textMessages, mediaMessages });
+            loadMessages({ textMessages, mediaMessages, fileMessages });
             updateUserList(data.users, data.numusers);
             await updatePeers(data.users);
             break;
@@ -186,6 +202,17 @@ localState.socket.addEventListener('message', async (event) => {
             }
             break;
         }
+        case 'fileurl':{
+            const fileUrl = data.url+'?roomId=' + localState.roomId + '&sessionId=' + localState.sessionId;
+            const fileName = data.fileMeta.fileName;
+            const fileType = data.fileMeta.fileType;
+            const iv = data.iv;
+            const timestamp = Date.now();
+            debugLog('info', 'Recieved file URL from server: ' + fileUrl + ' for file: ' + fileName + ' of type: ' + fileType);
+            handleNewFileMessage(data.from === localState.displayName ? 'You' : data.from, { name: fileName, type: fileType, iv: iv }, fileUrl, timestamp);
+            break;
+        }
+
         default:
             debugLog('warn', 'Recieved message from server with unknown type: ' + data.type);
     }

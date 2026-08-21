@@ -16,4 +16,5 @@ out/*
 *.mjs
 jsconfig.json
 todo.md
-
+fileserv/
+fileserv/*

@@ -1,6 +1,6 @@
 import {debugLog} from './debugLogger.js';
 import {localState, setStoredValue, isElectron, isMediaFile, isAudio,isImage,isVideo} from './roomMisc.js';
-import {ROOM_KEY, encryptMessage, encryptData} from './roomAuth.js';
+import {ROOM_KEY, encryptMessage, encryptData, decryptData} from './roomAuth.js';
 import {startWindowShare, selectWindowSourceUI, displayPeerScreenShare, stopWindowShare} from './roomScreenShare.js';
 import {chunkFile} from './roomPeer.js';
 const applicationAudio = {
@@ -40,7 +40,7 @@ function getChatUserColor(username) {
 }
 
 function createChatMessageItem(sender, message, timestamp, colorKey = sender, type = 'text') {
-    console.log('createChatMessageItem called with sender:', sender, 'message:', message, 'timestamp:', timestamp, 'colorKey:', colorKey, 'type:', type);
+    timestamp = new Date(timestamp).toLocaleTimeString();
     switch(type){
         case 'text':{
             const messageItem = document.createElement('li');
@@ -66,7 +66,6 @@ function createChatMessageItem(sender, message, timestamp, colorKey = sender, ty
 
             messageItem.append(senderLabel, messageBody, timestampLabel);
 
-            styleChatMessageItem(messageItem);
 
             return messageItem;
         }
@@ -91,7 +90,6 @@ function createChatMessageItem(sender, message, timestamp, colorKey = sender, ty
 
             messageItem.append(senderLabel, imageElement, timestampLabel);
 
-            styleChatMessageItem(messageItem);
 
             return messageItem;
         }
@@ -110,7 +108,6 @@ function createChatMessageItem(sender, message, timestamp, colorKey = sender, ty
             timestampLabel.className = 'text-[10px] text-gray-400';
             timestampLabel.textContent = `(${timestamp})`;
             messageItem.append(senderLabel, videoElement, timestampLabel);
-            styleChatMessageItem(messageItem);
             return messageItem;
         }
         case 'audio':{
@@ -127,37 +124,89 @@ function createChatMessageItem(sender, message, timestamp, colorKey = sender, ty
             timestampLabel.className = 'text-[10px] text-gray-400';
             timestampLabel.textContent = `(${timestamp})`;
             messageItem.append(senderLabel, audioElement, timestampLabel);
-            styleChatMessageItem(messageItem);
+            return messageItem;
+        }
+        case 'file':{
+            const fileUrl = message.url;
+            console.log(message.meta.iv);
+            var fileIv = null;
+            if(!message.meta.iv.data){
+                fileIv = new Uint8Array(message.meta.iv);
+            } else{
+                fileIv = new Uint8Array(message.meta.iv.data);
+            }
+            const fileName = message.meta.name;
+            const fileType = message.meta.type;
+            const messageItem = document.createElement('li');
+            messageItem.className = 'p-1 bg-skye-gray-input text-blue-500 text-[12px] min-w-0 max-w-full overflow-hidden';
+            messageItem.addEventListener('mouseover', () => {
+                messageItem.classList.add('text-indigo-500');
+            });
+            messageItem.addEventListener('mouseout', () => {
+                messageItem.classList.remove('text-indigo-500');
+            });
+            const senderLabel = document.createElement('b');   
+            senderLabel.textContent = `${sender}:`;
+            senderLabel.style.color = getChatUserColor(sender==='You'? localState.displayName : sender);
+            const fileElement = document.createElement('a');
+            fileElement.href = fileUrl;
+            fileElement.textContent = fileName;
+            fileElement.target = '_blank';
+            fileElement.style.cursor = 'crosshair';
+            fileElement.onclick = async (event) => {
+                event.preventDefault();
+                // download the file, decrypt it, and then save it to the user's device.
+                try {
+                    const response = await fetch(fileUrl);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const blob = await response.blob();
+                    const encryptedData = await blob.arrayBuffer();
+
+                    const decryptedData = await decryptData(encryptedData, fileIv);
+
+                    const decryptedBlob = new Blob([decryptedData], { type: fileType });
+
+                    const downloadUrl = URL.createObjectURL(decryptedBlob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+                
+                catch(err){
+                    debugLog('error', 'Error downloading or decrypting file:', err);
+                }
+            }
+            const timestampLabel = document.createElement('span');
+            timestampLabel.className = 'text-[10px] text-gray-400';
+            timestampLabel.textContent = `(${timestamp})`;
+
+            messageItem.append(senderLabel, fileElement, timestampLabel);
             return messageItem;
         }
     }
 
 }
 
-function styleChatMessageItem(messageItem) {
-    messageItem.className = 'p-1 bg-skye-gray-input text-white text-[12px] break-words whitespace-normal min-w-0';
-    messageItem.querySelectorAll('img').forEach((image) => {
-        image.classList.add('max-w-full', 'h-auto', 'block');
-    });
-}
-
-export function loadMessages(messages, type){
-    console.log('messages', messages);
+export function loadMessages(messages){
     const textMessages = messages.textMessages || [];
     const mediaMessages = messages.mediaMessages || [];
+    const fileMessages = messages.fileMessages || [];
     // sort messages by timestamp
     textMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     mediaMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    fileMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
     // combine text and media messages into a single array
-    const allMessages = [...textMessages, ...mediaMessages];
+    const allMessages = [...textMessages, ...mediaMessages, ...fileMessages];
     // sort all messages by timestamp
     allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
     for (const msg of allMessages) {
-        console.log('msg', msg);
-        console.log('msg.blobUrl', msg.blobUrl);
         if(msg.blobUrl){
-            console.log('hi');
             if(isImage(msg.filetype)){
                 textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.blobUrl, meta: { name: msg.fileName } }, msg.timestamp, msg.username, 'image'));
             } else if(isVideo(msg.filetype)){
@@ -166,31 +215,15 @@ export function loadMessages(messages, type){
                 textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.blobUrl, meta: { name: msg.fileName } }, msg.timestamp, msg.username, 'audio'));
             }
         }
-
-    }
-    return;
-
-
-    if(type === 'text'){
-        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        for (const msg of messages) {
+        else if(msg.url){
+            console.log(msg);
+            textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.url, meta: msg.message }, msg.timestamp, msg.username, 'file'));
+        } else{
             textChatMessagesList.appendChild(createChatMessageItem(msg.username, msg.message, msg.timestamp));
         }
         textChatContainer.scrollTop = textChatContainer.scrollHeight;
-    } else if(type === 'media'){
-        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        for (const msg of messages) {
-            const fileType = msg.message.split('.').pop().toLowerCase();
-            if(isImage(fileType)){
-                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.message, meta: { name: msg.message.split('/').pop(), type: 'image/' + fileType } }, msg.timestamp, msg.username, 'image'));
-            } else if(isVideo(fileType)){
-                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.message, meta: { name: msg.message.split('/').pop(), type: 'video/' + fileType } }, msg.timestamp, msg.username, 'video'));
-            } else if(isAudio(fileType)){
-                textChatMessagesList.appendChild(createChatMessageItem(msg.username, { url: msg.message, meta: { name: msg.message.split('/').pop(), type: 'audio/' + fileType } }, msg.timestamp, msg.username, 'audio'));
-            }
-        }
-        textChatContainer.scrollTop = textChatContainer.scrollHeight;
     }
+    return;
 }
 
 export function updateRoomNameID(roomname, roomid){
@@ -458,6 +491,11 @@ export function handleNewImageMessage(sender, fileMeta, fileURL, timestamp){
 }
 
 export function handleNewFileMessage(sender,  fileMeta, fileURL, timestamp){
+    if(fileMeta && fileURL){
+        const message = { url: fileURL, meta: fileMeta };
+        textChatMessagesList.appendChild(createChatMessageItem(sender, message, timestamp, sender, 'file'));
+        textChatContainer.scrollTop = textChatContainer.scrollHeight;
+    }
     return;
 }
 
@@ -532,7 +570,7 @@ deafenButton.addEventListener('click', () => {
     for (const peerName in localState.peerConnections) {
         localState.peerConnections[peerName].sendStatusUpdate({ muted: localState.isMuted, deafened: localState.isDeafened });
     }
-    updateLocalStatusIndicators();
+    updateLocalStatusIndicators();f
 });
 
 
@@ -545,7 +583,7 @@ textChatInput.addEventListener("keydown", (event) => {
 
 textChatSendButton.addEventListener('click', async () => {
     const message = textChatInput.value.trim();
-    const timestamp = new Date().toLocaleTimeString();
+    const timestamp = Date.now();
     if (message && message.length > 0) {
         if (message.length > 500) {
             alert('Message is too long. Please limit to 500 characters.');
@@ -574,14 +612,18 @@ textChatSendButton.addEventListener('click', async () => {
 
 textChatUploadInput.addEventListener('change', async (event) => {
     const files = event.target.files;
-    const timestamp = new Date().toLocaleTimeString();
+    const timestamp = Date.now();
     if (files.length > 0) {
         for (const file of files) {
             debugLog('info', 'Uploading file:', file.name, 'Type:', file.type, 'Size:', file.size, 'Timestamp:', timestamp);
-            for (const peerName in localState.peerConnections) {
-                localState.peerConnections[peerName].sendChatMessageMedia(file);
+            var isLargeFile = false;
+            if (file.size > 50 * 1024 * 1024 || !isMediaFile(file.type)) { // 50 MB or higher is uploaded to the media server and a link is sent in its place.
+                debugLog('info', 'File size exceeds 50MB, sending to media server instead of direct peer transfer.');
+                isLargeFile = true;
             }
-            if(isMediaFile(file.type)){
+            
+
+            if(isMediaFile(file.type) && !isLargeFile){
                 if(isImage(file.type)){
                     handleNewImageMessage('You', { name: file.name, type: file.type, size: file.size }, URL.createObjectURL(file), timestamp);
                 } else if(isVideo(file.type)){
@@ -589,9 +631,17 @@ textChatUploadInput.addEventListener('change', async (event) => {
                 } else if(isAudio(file.type)){
                     handleNewAudioMessage('You', { name: file.name, type: file.type, size: file.size }, URL.createObjectURL(file), timestamp);
                 }
+                for (const peerName in localState.peerConnections) {
+                    localState.peerConnections[peerName].sendChatMessageMedia(file);
+                }
             }
 
-            localState.socket.send(JSON.stringify({type: 'logMedia', kind: 'file-start',fileName: file.name, fileSize: file.size, fileType: file.type, roomId: localState.roomId, sessionId: localState.sessionId, contentType: 'media'}));
+            if(isLargeFile){
+                localState.socket.send(JSON.stringify({type: 'logFile', kind: 'file-start',fileName: file.name, fileSize: file.size, fileType: file.type, roomId: localState.roomId, sessionId: localState.sessionId, contentType: 'file'}));
+            }
+            else{
+                localState.socket.send(JSON.stringify({type: 'logMedia', kind: 'file-start',fileName: file.name, fileSize: file.size, fileType: file.type, roomId: localState.roomId, sessionId: localState.sessionId, contentType: 'media'}));
+            }
             // we need to include the filename in the chunk sent over
             const fileData = await file.arrayBuffer();
             const { encrypted, iv } = await encryptData(
@@ -622,16 +672,29 @@ textChatUploadInput.addEventListener('change', async (event) => {
 
                 localState.socket.send(encryptedPacket.buffer);
             }
-            localState.socket.send(JSON.stringify({
-                type: 'logMedia',
-                kind: 'file-end',
-                fileName: file.name,
-                timestamp: Date.now(),
-                roomId: localState.roomId,
-                sessionId: localState.sessionId,
-                contentType: 'media',
-                iv: Array.from(iv)
-            }));
+            if(isLargeFile){
+                localState.socket.send(JSON.stringify({
+                    type: 'logFile',
+                    kind: 'file-end',
+                    fileName: file.name,
+                    timestamp: Date.now(),
+                    roomId: localState.roomId,
+                    sessionId: localState.sessionId,
+                    contentType: 'file',
+                    iv: Array.from(iv)
+                }));
+            } else{
+                localState.socket.send(JSON.stringify({
+                    type: 'logMedia',
+                    kind: 'file-end',
+                    fileName: file.name,
+                    timestamp: Date.now(),
+                    roomId: localState.roomId,
+                    sessionId: localState.sessionId,
+                    contentType: 'media',
+                    iv: Array.from(iv)
+                }));
+            }
         }
     }
 });

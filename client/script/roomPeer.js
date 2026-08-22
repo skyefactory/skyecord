@@ -248,9 +248,10 @@ class Peer {
     handleIncomingChat(data) {
         if(data.text){
             const message = data.text.trim();
-            const timestamp = new Date(data.timestamp).toLocaleTimeString();
+            const timestamp = data.timestamp;
             const sender = this.peerName;
             handleNewMessage(sender, message, timestamp);
+            const notif = new Notification(`${sender}`, { body: message });
         } else{
             if(data.kind){
                 if(data.kind === 'file-start'){
@@ -261,24 +262,20 @@ class Peer {
                     const fileMeta = this.recievedFiles[data.fileName];
                     const blob = new Blob(fileMeta.chunks, { type: fileMeta.fileType });
                     const url = URL.createObjectURL(blob);
-                    const timestamp = new Date().toLocaleTimeString();
+                    const timestamp = Date.now();
                     if(isMediaFile(fileMeta.fileType)) {
                         if(isImage(fileMeta.fileType)){
                             handleNewImageMessage(this.peerName, fileMeta, url, timestamp);
+                            const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
                         }
                         else if(isVideo(fileMeta.fileType)){
                             handleNewVideoMessage(this.peerName, fileMeta, url, timestamp);
+                            const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
                         } 
                         else if(isAudio(fileMeta.fileType)){
                             handleNewAudioMessage(this.peerName, fileMeta, url, timestamp);
-                        }
-                    }else{
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = fileMeta.fileName;
-                        a.click();
+                            const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
                     }
-
                 }
             } else{
                 const packetBuffer = data;

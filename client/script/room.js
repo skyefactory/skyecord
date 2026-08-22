@@ -3,6 +3,7 @@ import {isElectron, localState, stopVoiceDetectionLocal} from './roomMisc.js';
 import {updateRoomNameID, loadMessages, updateUserList, handleNewFileMessage} from './roomUi.js';
 import {initializeRoomKey, decryptMessage, decryptData} from './roomAuth.js'; 
 import {updatePeers} from './roomPeer.js';   
+
 debugLog('info', 'room.js loaded');
 debugLog('info', `isElectron: ${isElectron}`);
 

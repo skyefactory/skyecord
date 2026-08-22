@@ -11,6 +11,7 @@
                 margin: auto;
             }
         </style>
+        <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
         <title>skyecord</title>
     </head>
 
@@ -80,6 +81,7 @@
                     </div>
                     <div id="input-text-wrapper" class="flex mt-2">
                         <input type="text" id="text-chat-input" class="flex-grow p-2.5 bg-skye-gray-light text-white rounded" placeholder="Type a message...">
+                        
                         <input type="file" id="text-chat-upload-input" class="hidden" multiple>
                         <label for="text-chat-upload-input" id="text-chat-upload" class="ml-2 p-2.5 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover"><img src="./svgicons/upload.svg" alt="Upload"></label>
                         <button id="text-chat-send" class="ml-2 p-2.5 bg-skye-gray-dark text-white cursor-pointer hover:bg-skye-gray-hover">Send</button>

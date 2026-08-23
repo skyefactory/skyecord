@@ -253,45 +253,46 @@ class Peer {
             handleNewMessage(sender, message, timestamp);
             const notif = new Notification(`${sender}`, { body: message });
         } else{
-            if(data.kind){
-                if(data.kind === 'file-start'){
-                    this.recievedFiles[data.fileName] = new FileMeta(data.fileName, data.size, data.fileType);
-                } else if(data.kind === 'file-end'){
-                    this.recievedFiles[data.fileName].recievedAllChunks = true;
-                    debugLog('info', "Recieved all chunks for file: ", data.fileName);
-                    const fileMeta = this.recievedFiles[data.fileName];
-                    const blob = new Blob(fileMeta.chunks, { type: fileMeta.fileType });
-                    const url = URL.createObjectURL(blob);
-                    const timestamp = Date.now();
-                    if(isMediaFile(fileMeta.fileType)) {
-                        if(isImage(fileMeta.fileType)){
-                            handleNewImageMessage(this.peerName, fileMeta, url, timestamp);
-                            const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
+                if(data.kind){
+                    if(data.kind === 'file-start'){
+                        this.recievedFiles[data.fileName] = new FileMeta(data.fileName, data.size, data.fileType);
+                    } else if(data.kind === 'file-end'){
+                        this.recievedFiles[data.fileName].recievedAllChunks = true;
+                        debugLog('info', "Recieved all chunks for file: ", data.fileName);
+                        const fileMeta = this.recievedFiles[data.fileName];
+                        const blob = new Blob(fileMeta.chunks, { type: fileMeta.fileType });
+                        const url = URL.createObjectURL(blob);
+                        const timestamp = Date.now();
+                        if(isMediaFile(fileMeta.fileType)) {
+                            if(isImage(fileMeta.fileType)){
+                                handleNewImageMessage(this.peerName, fileMeta, url, timestamp);
+                                const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
+                            }
+                            else if(isVideo(fileMeta.fileType)){
+                                handleNewVideoMessage(this.peerName, fileMeta, url, timestamp);
+                                const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
+                            } 
+                            else if(isAudio(fileMeta.fileType)){
+                                handleNewAudioMessage(this.peerName, fileMeta, url, timestamp);
+                                const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
                         }
-                        else if(isVideo(fileMeta.fileType)){
-                            handleNewVideoMessage(this.peerName, fileMeta, url, timestamp);
-                            const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
-                        } 
-                        else if(isAudio(fileMeta.fileType)){
-                            handleNewAudioMessage(this.peerName, fileMeta, url, timestamp);
-                            const notif = new Notification(` ${this.peerName}`, { body: fileMeta.fileName });
                     }
-                }
-            } else{
-                const packetBuffer = data;
-                const packet = new Uint8Array(packetBuffer);
+                } else{
+                    const packetBuffer = data;
+                    const packet = new Uint8Array(packetBuffer);
 
-                const fileNameLength = packet[0];
+                    const fileNameLength = packet[0];
 
-                const decoder = new TextDecoder();
-                const fileNameBytes = packet.subarray(1, 1 + fileNameLength);
-                const extractedFileName = decoder.decode(fileNameBytes);
-                const actualChunkBuffer = packetBuffer.slice(1 + fileNameLength);
+                    const decoder = new TextDecoder();
+                    const fileNameBytes = packet.subarray(1, 1 + fileNameLength);
+                    const extractedFileName = decoder.decode(fileNameBytes);
+                    const actualChunkBuffer = packetBuffer.slice(1 + fileNameLength);
 
-                if (this.recievedFiles[extractedFileName]) {
-                    this.recievedFiles[extractedFileName].chunks.push(actualChunkBuffer);
-                } else {
-                    debugLog('warn', "Received file chunk for unknown file: ", extractedFileName);
+                    if (this.recievedFiles[extractedFileName]) {
+                        this.recievedFiles[extractedFileName].chunks.push(actualChunkBuffer);
+                    } else {
+                        debugLog('warn', "Received file chunk for unknown file: ", extractedFileName);
+                    }
                 }
             }
         }

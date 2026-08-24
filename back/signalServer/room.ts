@@ -98,4 +98,8 @@
             socket.send(JSON.stringify({type: "roomUsers", data: {users: room.getUsersInRoom()}}));
             return true;
         }
+
+        initializeRoomsFromDB(){
+            //
+        }
     }

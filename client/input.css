@@ -9,10 +9,7 @@
 }
 
 @theme {
-  /* Register your retro Amstrad font */
   --font-amstrad: 'amstradpc', monospace;
-  
-  /* Register your exact color themes */
   --color-skye-bg: #131a17;
   --color-skye-cyan: #9dd6d6;
   --color-skye-gray-dark: #313131;
@@ -22,7 +19,6 @@
   --color-skye-gray-border: #6b6b6b;
   --color-skye-gray-light: #8f8f8f;
   --color-skye-gray:#2c2e2c;
-  /* Register your rainbow moving animation */
   --animate-rainbow-move: rainbow-move 4s linear infinite;
 
   @keyframes rainbow-move {

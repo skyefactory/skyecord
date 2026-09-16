@@ -10,16 +10,14 @@ message format:
 }
 */
 import validator from 'validator';
-import ws, { WebSocketServer } from "ws";
-import { RoomManager, peerID, roomID, UserConnection } from "./room.js";
-import WebSocket from "ws";
+import {WebSocketServer} from "ws";
+import * as types from "./types.js";
+import { RoomManager } from "./roomManager.js";
+import { generatePeerID } from "./peerID.js";
 
-export interface SkyecordWebSocket extends WebSocket {
-  isAlive: boolean;
-  sessionID?: string;
-}
 
-export class SignalServer{
+
+class SignalServer{
     public wss: WebSocketServer;
     public roomManager: RoomManager = new RoomManager();
     private serverPort: number = 50420;
@@ -34,7 +32,7 @@ export class SignalServer{
             maxPayload: this.maxPayload
         });
 
-        this.wss.on("connection", (ws: SkyecordWebSocket) => this.handleNewConnection(ws));
+        this.wss.on("connection", (ws: types.SkyecordWebSocket) => this.handleNewConnection(ws));
     }
 
     async verifySession(sessionID: string): Promise<boolean>{
@@ -60,7 +58,7 @@ export class SignalServer{
         }
     }
 
-    handleNewConnection(ws: SkyecordWebSocket){
+    handleNewConnection(ws: types.SkyecordWebSocket){
         if(this.connectionCount >= this.maxConnections){
             ws.close(1001, "Server is full");
             return;
@@ -94,11 +92,11 @@ export class SignalServer{
         }
     }
 
-    async handleMessage(ws: SkyecordWebSocket, message: string){
+    async handleMessage(ws: types.SkyecordWebSocket, message: string){
         const parsedMessage = this.parseMessage(message);
         if(!parsedMessage) return;
 
-        const { type, data, from, to } = parsedMessage;
+        const { type, data, to } = parsedMessage;
 
         if(!ws.sessionID){
             // this user has not yet been authenticated.
@@ -118,15 +116,15 @@ export class SignalServer{
 
         switch(type){
             case 'joinRoom':{
-                this.joinRoom(ws, data.roomID, data.username, from);
+                this.joinRoom(ws, data.roomID, data.username);
                 break;
             }
             case 'sdp':{
-                this.forwardSDP(ws, data.description, data.roomID, from, to);
+                this.forwardSDP(ws, data.description, to);
                 break;
             }
             case 'iceCandidate':{
-                this.forwardICECandidate(ws, data.candidate, data.roomID, from, to);
+                this.forwardICECandidate(ws, data.candidate, to);
                 // Handle ICE candidate logic
                 break;
             }
@@ -153,7 +151,13 @@ export class SignalServer{
         if(!candidate || typeof candidate !== 'object') return false;
         return true;
     }
-    joinRoom(ws: SkyecordWebSocket, roomID: roomID, username: string, peerID: peerID){
+    validateSocket(ws: SkyecordWebSocket): boolean{
+        if(!ws.sessionID) return false;
+        if(!ws.peerID) return false;
+        if(!ws.roomID) return false;
+        return true;
+    }
+    joinRoom(ws: SkyecordWebSocket, roomID: roomID, username: string){
         if(!this.roomManager.doesRoomExist(roomID)){
             ws.send(JSON.stringify({type: "error", data: "Room does not exist."}));
             ws.close(1008, "Room does not exist.");
@@ -164,43 +168,63 @@ export class SignalServer{
             ws.send(JSON.stringify({type: "error", data: "Username cannot be empty."}));
             ws.close(1008, "Invalid username.");
         }
-        this.roomManager.addUserToRoom(roomID, peerID, ws, username);
+        if(ws.peerID || ws.roomID){
+            ws.send(JSON.stringify({type: "error", data: "You are already in a room."}));
+            ws.close(1008, "Already in a room.");
+            return;
+        }
+        const peerID = generatePeerID();
+        const success = this.roomManager.addUserToRoom(roomID, peerID, ws, username);
+        if(!success){
+            ws.send(JSON.stringify({type: "error", data: "Failed to join room. Username may be taken."}));
+            ws.close(1008, "Failed to join room.");
+            return;
+        }
+        ws.peerID = peerID;
+        ws.roomID = roomID;
+        ws.send(JSON.stringify({type: "joinedRoom", data: {peerID, username}}));
     }
-    forwardSDP(ws: SkyecordWebSocket, description:any, roomID: roomID, from: peerID, to: peerID){
-        if(!this.roomManager.doesRoomExist(roomID)){
+    forwardSDP(ws: SkyecordWebSocket, description:any, to: peerID){
+        if(!this.validateSocket(ws)){
+            ws.send(JSON.stringify({type: "error", data: "You are not in a room."}));
+            ws.close(1008, "You are not in a room.");
+            return;
+        }
+        if(!this.roomManager.doesRoomExist(ws.roomID as roomID)){
             ws.send(JSON.stringify({type: "error", data: "Room does not exist."}));
             ws.close(1008, "Room does not exist.");
             return;
         }
-        if(!this.roomManager.isUserInRoom(roomID, from)){
-            ws.send(JSON.stringify({type: "error", data: "You are not in this room."}));
-            ws.close(1008, "You are not in this room.");
-            return;
-        }
+        
+        const room = this.roomManager.getRoom(ws.roomID as roomID);
+        if(!room) return;
+
         const descriptionIsValid = this.validateDescription(description);
+
         if(!descriptionIsValid){
             ws.send(JSON.stringify({type: "error", data: "Invalid SDP description."}));
             ws.close(1008, "Invalid SDP description.");
             return;
         }
-        const room = this.roomManager.getRoom(roomID);
-        if(!room) return;
+
+
         const targetUser = room.roomUsers.get(to);
         if(!targetUser){
             ws.send(JSON.stringify({type: "error", data: "Target user not found in room."}));
             return;
         }
-        targetUser.socket.send(JSON.stringify({type: "sdp", data: {description, from}}));
+
+        targetUser.socket.send(JSON.stringify({type: "sdp", }));
     }
-    forwardICECandidate(ws: SkyecordWebSocket, candidate:any, roomID: roomID, from: peerID, to: peerID){
-        if(!this.roomManager.doesRoomExist(roomID)){
-            ws.send(JSON.stringify({type: "error", data: "Room does not exist."}));
-            ws.close(1008, "Room does not exist.");
+    forwardICECandidate(ws: SkyecordWebSocket, candidate:any,  to: peerID){
+        if(!ws.roomID || !ws.peerID){
+            ws.send(JSON.stringify({type: "error", data: "You are not in a room."}));
+            ws.close(1008, "You are not in a room.");
             return;
         }
-        if(!this.roomManager.isUserInRoom(roomID, from)){
-            ws.send(JSON.stringify({type: "error", data: "You are not in this room."}));
-            ws.close(1008, "You are not in this room.");
+        if(!this.roomManager.doesRoomExist(ws.roomID)){
+            ws.send(JSON.stringify({type: "error", data: "Room does not exist."}));
+            ws.close(1008, "Room does not exist.");
             return;
         }
         const candidateIsValid = this.validateICECandidate(candidate);
@@ -209,16 +233,16 @@ export class SignalServer{
             ws.close(1008, "Invalid ICE candidate.");
             return;
         }
-        const room = this.roomManager.getRoom(roomID);
+        const room = this.roomManager.getRoom(ws.roomID);
         if(!room) return;
         const targetUser = room.roomUsers.get(to);
         if(!targetUser){
             ws.send(JSON.stringify({type: "error", data: "Target user not found in room."}));
             return;
         }
-        targetUser.socket.send(JSON.stringify({type: "iceCandidate", data: {candidate, from}}));
+        targetUser.socket.send(JSON.stringify({type: "iceCandidate", data: {candidate, from: ws.peerID}}));
     }
-    updateUsername(ws: SkyecordWebSocket, roomID: roomID, peerID: peerID, newUsername: string){}
-    handleDisconnection(ws: SkyecordWebSocket, peerID: peerID, roomID: roomID){}
+    updateUsername(ws: SkyecordWebSocket, newUsername: string){}
+    handleDisconnection(ws: SkyecordWebSocket){}
 
 }

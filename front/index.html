@@ -1,0 +1,33 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="skyecord">
+        <link rel="manifest" href="./manifest.json">
+        <title>skyecord</title>
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    </head>
+
+    <body class="h-screen overflow-hidden">
+        <div id="header">
+            <h1>skyecord</h1>
+        </div>
+        
+        <hr>
+        <h1 class="text-red" id="error-msg"></h1>
+        <div id="login-area" class="hidden flex flex-col items-center justify-center border-2 border-gray-300">
+            <form id="login-form">
+                <input type="text" id="username" name="username" placeholder="Username" required><br>
+                <input type="password" id="password" name="password" placeholder="Password" required><br>
+                <button type="submit">Login</button>
+            </form>
+        </div>
+
+        <div id="main-menu" class="hidden flex flex-col items-center justify-center border-2 border-gray-300">
+            <h2>Main Menu</h2>
+            <button id="create-room">Create Room</button>
+            <button id="join-room">Join Room</button>
+        </div>
+    </body>
+    <script src="./scripts/index.js"></script>
+</html>

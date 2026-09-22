@@ -1,6 +1,6 @@
-import { SkyecordWebSocket,roomID, peerID } from "./types.js";
-import { UserConnection } from "./userConnection.js";
-import { Room } from "./room.js";
+import type { SkyecordWebSocket,roomID, peerID } from "./types.ts";
+import { UserConnection } from "./userConnection.ts";
+import { Room } from "./room.ts";
 
 export class RoomManager{
     public rooms: Map<roomID, Room> = new Map<roomID, Room>();
@@ -19,9 +19,6 @@ export class RoomManager{
     doesRoomExist(roomID: roomID): boolean{
         return this.rooms.has(roomID);
     }
-
-
-
     isUsernameTaken(roomID: roomID, username: string): boolean{
         const room = this.getRoom(roomID);
         if(!room) return false;
@@ -30,7 +27,6 @@ export class RoomManager{
         }
         return false;
     }
-
     isRoomEmpty(roomID: roomID): boolean{
         const room = this.getRoom(roomID);
         if(!room) return true;
@@ -51,6 +47,18 @@ export class RoomManager{
         room.roomUsers.set(peerID, user);
         room.broadcastMessage(JSON.stringify({type: "userJoined", data: {peerID, username}}), peerID, true);
         socket.send(JSON.stringify({type: "roomUsers", data: {users: room.getUsersInRoom()}}));
+        return true;
+    }
+
+    removeUserFromRoom(roomID: roomID, peerID: peerID): boolean{
+        const room = this.getRoom(roomID);
+        if(!room) return false;
+
+        const user = room.roomUsers.get(peerID);
+        if(!user) return false;
+
+        room.roomUsers.delete(peerID);
+        room.broadcastMessage(JSON.stringify({type: "userLeft", data: {peerID}}), peerID, true);
         return true;
     }
 

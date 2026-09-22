@@ -1,4 +1,4 @@
-import { SkyecordWebSocket, peerID } from "./types.js";
+import type { SkyecordWebSocket, peerID } from "./types.ts";
 export class UserConnection{
     public peerID: peerID;
     public socket: SkyecordWebSocket;

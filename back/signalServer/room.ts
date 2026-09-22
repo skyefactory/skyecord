@@ -1,5 +1,5 @@
-import { roomID, peerID } from "./types.js";
-import { UserConnection } from "./userConnection.js";
+import type { roomID, peerID } from "./types.ts";
+import { UserConnection } from "./userConnection.ts";
 
 
 export class Room{

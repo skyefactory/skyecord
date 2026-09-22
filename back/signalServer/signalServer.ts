@@ -11,9 +11,9 @@ message format:
 */
 import validator from 'validator';
 import {WebSocketServer} from "ws";
-import * as types from "./types.js";
-import { RoomManager } from "./roomManager.js";
-import { generatePeerID } from "./peerID.js";
+import { RoomManager } from "./roomManager.ts";
+import { generatePeerID } from "./peerID.ts";
+import * as types from "./types.ts";
 
 
 
@@ -33,6 +33,8 @@ class SignalServer{
         });
 
         this.wss.on("connection", (ws: types.SkyecordWebSocket) => this.handleNewConnection(ws));
+        console.log(`Signal server is running on port ${this.serverPort}`);
+        console.log('Waiting for connections...');
     }
 
     async verifySession(sessionID: string): Promise<boolean>{
@@ -77,6 +79,7 @@ class SignalServer{
         });
 
         ws.on("message", async (message: string) => this.handleMessage(ws, message));
+        ws.on("close", () => this.handleDisconnection(ws));
     }
 
     parseMessage(message: JSON | string){
@@ -97,7 +100,10 @@ class SignalServer{
         if(!parsedMessage) return;
 
         const { type, data, to } = parsedMessage;
-
+        if(data.roomSecret){
+            // this is a connection from the db server.
+            // verify the room secret and handle accordingly.s
+        }
         if(!ws.sessionID){
             // this user has not yet been authenticated.
             const sentSessionID = data.sessionID;
@@ -125,7 +131,6 @@ class SignalServer{
             }
             case 'iceCandidate':{
                 this.forwardICECandidate(ws, data.candidate, to);
-                // Handle ICE candidate logic
                 break;
             }
             case 'updateUsername':{
@@ -151,13 +156,13 @@ class SignalServer{
         if(!candidate || typeof candidate !== 'object') return false;
         return true;
     }
-    validateSocket(ws: SkyecordWebSocket): boolean{
+    validateSocket(ws: types.SkyecordWebSocket): boolean{
         if(!ws.sessionID) return false;
         if(!ws.peerID) return false;
         if(!ws.roomID) return false;
         return true;
     }
-    joinRoom(ws: SkyecordWebSocket, roomID: roomID, username: string){
+    joinRoom(ws: types.SkyecordWebSocket, roomID: types.roomID, username: string){
         if(!this.roomManager.doesRoomExist(roomID)){
             ws.send(JSON.stringify({type: "error", data: "Room does not exist."}));
             ws.close(1008, "Room does not exist.");
@@ -184,19 +189,19 @@ class SignalServer{
         ws.roomID = roomID;
         ws.send(JSON.stringify({type: "joinedRoom", data: {peerID, username}}));
     }
-    forwardSDP(ws: SkyecordWebSocket, description:any, to: peerID){
+    forwardSDP(ws: types.SkyecordWebSocket, description:any, to: types.peerID){
         if(!this.validateSocket(ws)){
             ws.send(JSON.stringify({type: "error", data: "You are not in a room."}));
             ws.close(1008, "You are not in a room.");
             return;
         }
-        if(!this.roomManager.doesRoomExist(ws.roomID as roomID)){
+        if(!this.roomManager.doesRoomExist(ws.roomID as types.roomID)){
             ws.send(JSON.stringify({type: "error", data: "Room does not exist."}));
             ws.close(1008, "Room does not exist.");
             return;
         }
         
-        const room = this.roomManager.getRoom(ws.roomID as roomID);
+        const room = this.roomManager.getRoom(ws.roomID as types.roomID);
         if(!room) return;
 
         const descriptionIsValid = this.validateDescription(description);
@@ -216,7 +221,7 @@ class SignalServer{
 
         targetUser.socket.send(JSON.stringify({type: "sdp", }));
     }
-    forwardICECandidate(ws: SkyecordWebSocket, candidate:any,  to: peerID){
+    forwardICECandidate(ws: types.SkyecordWebSocket, candidate:any,  to: types.peerID){
         if(!ws.roomID || !ws.peerID){
             ws.send(JSON.stringify({type: "error", data: "You are not in a room."}));
             ws.close(1008, "You are not in a room.");
@@ -242,7 +247,49 @@ class SignalServer{
         }
         targetUser.socket.send(JSON.stringify({type: "iceCandidate", data: {candidate, from: ws.peerID}}));
     }
-    updateUsername(ws: SkyecordWebSocket, newUsername: string){}
-    handleDisconnection(ws: SkyecordWebSocket){}
+    updateUsername(ws: types.SkyecordWebSocket, newUsername: string){
+        if(!ws.roomID || !ws.peerID){
+            ws.send(JSON.stringify({type: "error", data: "You are not in a room."}));
+            ws.close(1008, "You are not in a room.");
+            return;
+        }
+        if(!this.roomManager.doesRoomExist(ws.roomID)){
+            ws.send(JSON.stringify({type: "error", data: "Room does not exist."}));
+            ws.close(1008, "Room does not exist.");
+            return;
+        }
+        newUsername = this.sanitizeUsername(newUsername);
+        if(newUsername.length < 1){
+            ws.send(JSON.stringify({type: "error", data: "Username cannot be empty."}));
+            ws.close(1008, "Invalid username.");
+            return;
+        }
+        const room = this.roomManager.getRoom(ws.roomID);
+        if(!room) return;
+        if(this.roomManager.isUsernameTaken(ws.roomID, newUsername)){
+            ws.send(JSON.stringify({type: "error", data: "Username is already taken in this room."}));
+            return;
+        }
+        const userConnection = room.roomUsers.get(ws.peerID);
+        if(!userConnection){
+            ws.send(JSON.stringify({type: "error", data: "User not found in room."}));
+            return;
+        }
+        userConnection.username = newUsername;
+        room.broadcastMessage(JSON.stringify({type: "usernameUpdated", data: {peerID: ws.peerID, newUsername}}), ws.peerID, true);
+    }
+    handleDisconnection(ws: types.SkyecordWebSocket){
+        if(!ws.roomID || !ws.peerID) return;
+        if(!this.roomManager.doesRoomExist(ws.roomID)) return;
 
-}
+        const room = this.roomManager.getRoom(ws.roomID);
+        if(!room) return;
+
+        const userConnection = room.roomUsers.get(ws.peerID);
+        if(!userConnection) return;
+
+        this.roomManager.removeUserFromRoom(ws.roomID, ws.peerID);
+    }
+};
+
+let server: SignalServer = new SignalServer();
